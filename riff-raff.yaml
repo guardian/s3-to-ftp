@@ -1,0 +1,11 @@
+stacks: [content-api]
+regions: [eu-west-1]
+
+deployments:
+  s3-to-ftp:
+    type: aws-lambda
+    parameters:
+      prefixStack: false
+      bucket: content-api-dist
+      fileName: s3-to-ftp.zip
+      functionNames: [s3-to-ftp-]
