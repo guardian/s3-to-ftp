@@ -56,9 +56,9 @@ Resources:
       Policies:
         - AWSLambdaBasicExecutionRole
         - Statement:
-          Effect: Allow
-          Action:
-            - s3:GetObject
-            - s3:ListObjects
-          Resource:
-            !Ref SourceBuckets
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:ListObjects
+            Resource:
+              !Ref SourceBuckets
