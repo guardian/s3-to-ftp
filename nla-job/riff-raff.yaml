@@ -1,0 +1,11 @@
+stacks: [content-api]
+regions: [eu-west-1]
+
+deployments:
+  nla-to-s3:
+    type: aws-lambda
+    parameters:
+      prefixStack: false
+      bucket: content-api-dist
+      fileName: nla-to-s3.zip
+      functionNames: [nla-to-s3-]

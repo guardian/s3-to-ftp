@@ -1,0 +1,24 @@
+{
+  "name": "nla-to-s3",
+  "isAwsLambda": true,
+  "cloudformation": false,
+  "projectName": "Content Platforms::nla-to-s3",
+  "buildDir": "./target",
+  "riffraffFile": "./riff-raff.yaml",
+  "dependencies": {
+    "aws-sdk": "^2.264.1",
+    "typescript": "2.8.3",
+    "moment": "2.22.2",
+    "ftp": "0.3.10"
+  },
+  "devDependencies": {
+    "@types/node": "8.10.0",
+    "node-riffraff-artefact": "^2.0.1"
+  },
+  "scripts": {
+    "clean": "rm -rf target",
+    "build": "tsc",
+    "local": "node target/local.js",
+    "package": "ARTEFACT_PATH=$PWD/target VERBOSE=true riffraff-artefact"
+  }
+}

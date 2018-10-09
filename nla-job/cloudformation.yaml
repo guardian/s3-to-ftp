@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: Copies new s3 objects to an ftp server
+
+Parameters:
+  Stack:
+    Description: Stack name
+    Type: String
+    Default: content-api
+  App:
+    Description: Application name
+    Type: String
+    Default: nla-to-s3
+  Stage:
+    Description: Stage name
+    Type: String
+    AllowedValues:
+      - CODE
+      - PROD
+  DeployBucket:
+    Description: Bucket to copy files to
+    Type: String
+    Default: content-api-dist
+  DestinationBucket:
+    Description: List of the source bucket ARN permissions, e.g. 'arn:aws:s3::*:my-source-bucket-1/*,arn:aws:s3::*:my-source-bucket-2/*'
+    Type: CommaDelimitedList
+  Schema:
+    Description: Data lake schema to run the query in
+    Type: String
+    Default: clean
+Resources:
+  Lambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${App}-${Stage}
+      Description: Runs the NLA query against the data lake
+      Runtime: nodejs8.10
+      Handler: lambda.handler
+      MemorySize: 128
+      Timeout: 300
+      Environment:
+        Variables:
+          Destination: !Ref SoureBuckets
+          Schema: !Ref Schema
+          Stage: !Ref Stage
+      CodeUri:
+        Bucket: !Ref DeployBucket
+        Key: !Sub ${Stack}/${Stage}/${App}/${App}.zip
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:ListObjects
+            Resource:
+              !Ref DestinationBucket
