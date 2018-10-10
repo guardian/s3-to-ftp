@@ -56,10 +56,10 @@ Resources:
       Runtime: nodejs8.10
       Handler: lambda.handler
       MemorySize: 128
-      Timeout: 300
+      Timeout: 20
       Environment:
         Variables:
-          Destination: !Ref SoureBuckets
+          Destination: !Ref DestinationBucket
           Schema: !Ref Schema
           Stage: !Ref Stage
       CodeUri:
@@ -74,4 +74,4 @@ Resources:
               - s3:PutObject
               - s3:ListObjects
             Resource:
-              !Ref DestinationBucket
+              - !Ref DestinationBucket
