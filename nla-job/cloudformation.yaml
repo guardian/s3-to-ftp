@@ -33,21 +33,23 @@ Parameters:
     Type: String
 Resources:
   Policy:
-    Type: AWS::Policy
-    Statement:
-      - Effect: Allow
-        Principal:
-          AWS: arn:aws:iam::${OphanAccountId}:root
-        Action:
-          - s3:GetBucketLocation
-          - s3:GetObject
-          - s3:ListBucket
-          - s3:ListBucketMultipartUploads
-          - s3:ListMultipartUploadParts
-          - s3:AbortMultipartUpload
-          - s3:PutObject
-        Resource:
-          - !Ref DestinationBucket
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: arn:aws:iam::${OphanAccountId}:root
+            Action:
+              - s3:GetBucketLocation
+              - s3:GetObject
+              - s3:ListBucket
+              - s3:ListBucketMultipartUploads
+              - s3:ListMultipartUploadParts
+              - s3:AbortMultipartUpload
+              - s3:PutObject
+            Resource:
+              - !Ref DestinationBucket
   Lambda:
     Type: AWS::Serverless::Function
     Properties:
