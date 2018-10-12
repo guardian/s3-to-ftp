@@ -50,6 +50,9 @@ Resources:
               - s3:PutObject
             Resource:
               - !Ref DestinationBucket
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Resource: '*'
   Lambda:
     Type: AWS::Serverless::Function
     Properties:
