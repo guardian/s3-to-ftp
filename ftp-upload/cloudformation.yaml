@@ -31,6 +31,13 @@ Parameters:
     Description: Ftp password
     Type: String
     NoEcho: true
+  ZipFile:
+    Description: True if file should be zipped before uploading to ftp
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
   SourceBuckets:
     Description: List of the source bucket ARN permissions, e.g. 'arn:aws:s3::*:my-source-bucket-1/*,arn:aws:s3::*:my-source-bucket-2/*'
     Type: CommaDelimitedList
@@ -49,6 +56,7 @@ Resources:
           FtpHost: !Ref FtpHost
           FtpUser: !Ref FtpUser
           FtpPassword: !Ref FtpPassword
+          ZipFile: !Ref ZipFile
           Stage: !Ref Stage
       CodeUri:
         Bucket: !Ref DeployBucket
