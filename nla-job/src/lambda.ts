@@ -1,10 +1,21 @@
 import {Config} from './config';
 
 let AWS = require('aws-sdk');
+let config = new Config();
 
-export function handler(event) {
-  let athena = new AWS.Athena();
-  let config = new Config();
+export function handler() {
+  let sts = new AWS.STS();
+  sts.assumeRole({
+    RoleArn: config.AthenaRole,
+    RoleSessionName: 'capi-nla-athena-to-s3'
+  }, (error, data) => {
+    if (error) console.log(error, error.stack);
+    else runQuery(data.Credentials);
+  });
+}
+
+export function runQuery(creds) {
+  let athena = new AWS.Athena({ ... creds });
   
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
