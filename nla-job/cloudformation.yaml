@@ -31,6 +31,9 @@ Parameters:
   OphanAccountId:
     Description: Ophan Account id
     Type: String
+  AthenaRole:
+    Description: Role to assume in order to query Athena
+    Type: String
 Resources:
   Policy:
     Type: AWS::IAM::Policy
@@ -66,6 +69,7 @@ Resources:
         Variables:
           Destination: !Ref DestinationBucket
           Schema: !Ref Schema
+          AthenaRole: !Ref AthenaRole
           Stage: !Ref Stage
       CodeUri:
         Bucket: !Ref DeployBucket
