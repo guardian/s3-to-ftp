@@ -1,12 +1,11 @@
 import {Config} from './config';
 
 let AWS = require('aws-sdk');
-AWS.config.update({region:'eu-west-1'});
-
-let athena = new AWS.Athena();
-let config = new Config();
 
 export function handler(event) {
+  let athena = new AWS.Athena();
+  let config = new Config();
+  
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   const query = `
