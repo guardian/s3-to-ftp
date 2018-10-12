@@ -23,7 +23,7 @@ Parameters:
     Default: content-api-dist
   DestinationBucket:
     Description: List of the source bucket ARN permissions, e.g. 'arn:aws:s3::*:my-source-bucket-1/*,arn:aws:s3::*:my-source-bucket-2/*'
-    Type: CommaDelimitedList
+    Type: String
   Schema:
     Description: Data lake schema to run the query in
     Type: String
@@ -35,27 +35,6 @@ Parameters:
     Description: Role to assume in order to query Athena
     Type: String
 Resources:
-  Policy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              AWS: arn:aws:iam::${OphanAccountId}:root
-            Action:
-              - s3:GetBucketLocation
-              - s3:GetObject
-              - s3:ListBucket
-              - s3:ListBucketMultipartUploads
-              - s3:ListMultipartUploadParts
-              - s3:AbortMultipartUpload
-              - s3:PutObject
-            Resource:
-              - !Ref DestinationBucket
-          - Effect: Allow
-            Action: sts:AssumeRole
-            Resource: '*'
   Lambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -83,4 +62,4 @@ Resources:
               - s3:PutObject
               - s3:ListObjects
             Resource:
-              - !Ref DestinationBucket
+              !Ref DestinationBucket
