@@ -59,6 +59,12 @@ Resources:
                 - s3:ListObjects
               Resource:
                 !Ref DestinationBucket
+        - PolicyName: assume-athena-query
+          PolicyDocument:
+            Statement:
+              Effect: Allow
+              Action: sts:AssumeRole
+              Resource: !Ref AthenaRole
 
   Lambda:
     Type: AWS::Serverless::Function
