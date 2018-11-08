@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
-Description: Runs the NLA query in Athena
+Description: Runs the NLA query in Athena which will store results in one of our S3 buckets
 
 Parameters:
   Stack:
@@ -35,6 +35,31 @@ Parameters:
     Description: Role to assume in order to query Athena
     Type: String
 Resources:
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyName: assume-s3-read
+          PolicyDocument:
+            Statement:
+              Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:ListObjects
+              Resource:
+                !Ref DestinationBucket
+
   Lambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -53,13 +78,4 @@ Resources:
       CodeUri:
         Bucket: !Ref DeployBucket
         Key: !Sub ${Stack}/${Stage}/${App}/${App}.zip
-      Policies:
-        - AWSLambdaBasicExecutionRole
-        - Statement:
-            Effect: Allow
-            Action:
-              - s3:GetObject
-              - s3:PutObject
-              - s3:ListObjects
-            Resource:
-              !Ref DestinationBucket
+      Role: !GetAtt ExecutionRole.Arn
