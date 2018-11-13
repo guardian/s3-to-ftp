@@ -8,7 +8,7 @@ export function handler() {
   const chain = new AWS.CredentialProviderChain();
   chain.providers.unshift(() => new AWS.TemporaryCredentials({
     RoleArn: config.AthenaRole,
-    RoleSessionName: 'capi-nla-athena-to-s3'
+    RoleSessionName: 'ophan'
   }));
   chain.providers.unshift(() => new AWS.SharedIniFileCredentials({ profile: 'ophan' }))
   chain.resolve(runQuery);
