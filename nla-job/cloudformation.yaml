@@ -24,13 +24,13 @@ Parameters:
   DestinationBucket:
     Description: List of the source bucket ARN permissions, e.g. 'arn:aws:s3::*:my-source-bucket-1/*,arn:aws:s3::*:my-source-bucket-2/*'
     Type: String
+  DestinationBucketURI:
+    Description: Same as above but using the s3:// notation
+    Type: String
   Schema:
     Description: Data lake schema to run the query in
     Type: String
     Default: clean
-  OphanAccountId:
-    Description: Ophan Account id
-    Type: String
   AthenaRole:
     Description: Role to assume in order to query Athena
     Type: String
@@ -49,22 +49,18 @@ Resources:
                 - lambda.amazonaws.com
       Path: /
       Policies:
-        - PolicyName: assume-s3-read
-          PolicyDocument:
-            Statement:
-              Effect: Allow
-              Action:
-                - s3:GetObject
-                - s3:PutObject
-                - s3:ListObjects
-              Resource:
-                !Ref DestinationBucket
         - PolicyName: assume-athena-query
           PolicyDocument:
             Statement:
               Effect: Allow
               Action: sts:AssumeRole
               Resource: !Ref AthenaRole
+        - PolicyName: write-s3-results
+          PolicyDocument:
+            Statement:
+              Effect: Allow
+              Action: s3:*
+              Resource: !Ref DestinationBucket
 
   Lambda:
     Type: AWS::Serverless::Function
@@ -77,7 +73,7 @@ Resources:
       Timeout: 20
       Environment:
         Variables:
-          Destination: !Ref DestinationBucket
+          Destination: !Ref DestinationBucketURI
           Schema: !Ref Schema
           AthenaRole: !Ref AthenaRole
           Stage: !Ref Stage
