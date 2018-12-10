@@ -27,7 +27,7 @@ export function runQuery(err, credentials) {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const query = `
-      SELECT web_title, url_raw, pv.path AS url_path, count(1) AS pageviews, received_date
+      SELECT web_title, url_raw, pv.path AS path, count(1) AS pageviews
       FROM   clean.pageview pv
             INNER JOIN clean.content_new c ON pv.path = c.path
             CROSS JOIN UNNEST (content_type_tag) AS A (a_type_tag)
@@ -35,7 +35,7 @@ export function runQuery(err, credentials) {
       WHERE  received_date = date'${yesterday.toISOString().slice(0, 10)}'
       AND    platform = 'NEXT_GEN'
       AND    (a_type_tag = 'type/article' OR a_tone_tag = 'tone/minutebyminute')
-      GROUP BY 1,2,3,5
+      GROUP BY 1,2,3
       ORDER BY 4 DESC
     `;
 
