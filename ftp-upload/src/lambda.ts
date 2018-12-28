@@ -12,7 +12,8 @@ let config = new Config();
 export async function handler(event) {
     console.log(`Assuming role...`);
     sts.assumeRole({
-        RoleArn: config.AthenaRole
+        RoleArn: config.AthenaRole,
+        RoleSessionName: "S3toFTP"
     }, getCredentials(event))    
 }    
 
