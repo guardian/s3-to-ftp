@@ -5,34 +5,13 @@ let AWS = require('aws-sdk');
 let ftp = require('ftp');
 let fs = require('fs');
 let archiver = require('archiver');
-const sts = new AWS.STS();
 
 let config = new Config();
 
 export async function handler(event) {
-    console.log(`Assuming role...`);
-    return new Promise((resolve, reject) =>  {
-        sts.assumeRole({
-            RoleArn: config.AthenaRole,
-            RoleSessionName: "S3toFTP"
-        }, getCredentials(event, resolve, reject))
-    });
-}    
-
-const getCredentials = (event, resolve, reject) => (err, data) => {
-    if (err) {
-        reject(new Error(err));
-    } else {
-        console.log("Got credentials", data);
-        processRecords(event, data.Credentials).then(resolve);
-    }
-}
-
-const processRecords = (event, credentials) => {
     const s3 = new AWS.S3({
         apiVersion: 'latest',
         region: 'eu-west-1', 
-        credentials
     });
 
     return Promise.all(
