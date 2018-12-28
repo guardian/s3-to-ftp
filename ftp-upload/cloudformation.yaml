@@ -21,10 +21,6 @@ Parameters:
     Description: Bucket to copy files to
     Type: String
     Default: content-api-dist
-  SourceBucket:
-    Description: Bucket where CSV files are uploaded
-    Type: String
-    Default: nla-analytics
   FtpHost:
     Description: Hostname of the ftp server to upload to
     Type: String
@@ -73,7 +69,7 @@ Resources:
         AthenaCSVEvent:
           Type: S3
           Properties:
-            Bucket: !Ref SrcBucket
+            Bucket: !Ref SourceBuckets
             Events: s3:ObjectCreated:*
       Policies:
         - AWSLambdaBasicExecutionRole
