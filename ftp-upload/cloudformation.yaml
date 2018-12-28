@@ -38,9 +38,6 @@ Parameters:
       - 'true'
       - 'false'
     Default: 'false'
-  AthenaRole:
-    Description: Role to assume in order to query Athena
-    Type: String
   SourceBucketName:
     Description: Bucket where NLA files are generated
     Type: String
@@ -73,7 +70,6 @@ Resources:
           FtpUser: !Ref FtpUser
           FtpPassword: !Ref FtpPassword
           ZipFile: !Ref ZipFile
-          AthenaRole: !Ref AthenaRole
           Stage: !Ref Stage
       CodeUri:
         Bucket: !Ref DeployBucket
