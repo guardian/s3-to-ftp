@@ -5,28 +5,32 @@ let AWS = require('aws-sdk');
 let ftp = require('ftp');
 let fs = require('fs');
 let archiver = require('archiver');
+const sts = new AWS.STS();
 
 let config = new Config();
 
 export async function handler(event) {
-    const chain = new AWS.CredentialProviderChain([
-        new AWS.TemporaryCredentials({
-            RoleArn: config.AthenaRole,
-            RoleSessionName: 'capi'
-        }),
-        new AWS.SharedIniFileCredentials({ profile: 'capi' })
-    ]);
+    console.log(`Assuming role...`);
+    sts.assumeRole({
+        RoleArn: config.AthenaRole
+    }, getCredentials(event))    
+}    
 
-    chain.resolvePromise()
-        .then(credentials => new AWS.S3({
-            apiVersion: 'latest',
-            region: 'eu-west-1', 
-            credentials
-        }))
-        .then(processRecords(event));
+const getCredentials = event => (err, data) => {
+    if (err) {
+        console.error(err, err.stack);
+    } else {
+        processRecords(event, data.Credentials);
+    }
 }
 
-const processRecords = event => s3 => {
+const processRecords = (event, credentials) => {
+    const s3 = new AWS.S3({
+        apiVersion: 'latest',
+        region: 'eu-west-1', 
+        credentials
+    });
+
     return Promise.all(
         event.Records.map(record => {
             let bucket = record.s3.bucket.name;
