@@ -11,17 +11,20 @@ let config = new Config();
 
 export async function handler(event) {
     console.log(`Assuming role...`);
-    sts.assumeRole({
-        RoleArn: config.AthenaRole,
-        RoleSessionName: "S3toFTP"
-    }, getCredentials(event))    
+    return new Promise((resolve, reject) =>  {
+        sts.assumeRole({
+            RoleArn: config.AthenaRole,
+            RoleSessionName: "S3toFTP"
+        }, getCredentials(event, resolve, reject))
+    });
 }    
 
-const getCredentials = event => (err, data) => {
+const getCredentials = (event, resolve, reject) => (err, data) => {
     if (err) {
-        console.error(err, err.stack);
+        reject(new Error(err));
     } else {
-        processRecords(event, data.Credentials);
+        console.log("Got credentials", data);
+        processRecords(event, data.Credentials).then(resolve);
     }
 }
 
