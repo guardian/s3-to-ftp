@@ -41,9 +41,10 @@ Parameters:
   AthenaRole:
     Description: Role to assume in order to query Athena
     Type: String
-  SourceBuckets:
-    Description: List of the source bucket ARN permissions, e.g. 'arn:aws:s3::*:my-source-bucket-1/*,arn:aws:s3::*:my-source-bucket-2/*'
-    Type: CommaDelimitedList
+  SourceBucketName:
+    Description: Bucket where NLA files are generated
+    Type: String
+    Default: nla-analytics
 Resources:
   Lambda:
     Type: AWS::Serverless::Function
@@ -69,7 +70,7 @@ Resources:
         AthenaCSVEvent:
           Type: S3
           Properties:
-            Bucket: !Ref SourceBuckets
+            Bucket: !Ref SourceBucket
             Events: s3:ObjectCreated:*
       Policies:
         - AWSLambdaBasicExecutionRole
@@ -79,4 +80,8 @@ Resources:
               - s3:GetObject
               - s3:ListObjects
             Resource:
-              !Ref SourceBuckets
+              !Ref SourceBucket
+  SourceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref SourceBucketName
