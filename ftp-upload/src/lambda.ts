@@ -15,7 +15,7 @@ export async function handler(event) {
         RoleSessionName: 'capi'
     }));
     chain.providers.unshift(() => new AWS.SharedIniFileCredentials({ profile: 'capi' }))
-    chain.resolvePromise
+    chain.resolvePromise()
         .then(credentials => new AWS.S3({
             apiVersion: 'latest',
             region: 'eu-west-1', 
