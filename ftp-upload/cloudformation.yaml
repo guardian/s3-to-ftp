@@ -46,6 +46,18 @@ Parameters:
     Type: String
     Default: nla-analytics
 Resources:
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - lambda.amazonaws.com
   Lambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -72,8 +84,8 @@ Resources:
           Properties:
             Bucket: !Ref SourceBucket
             Events: s3:ObjectCreated:*
-      Policies:
-        - AWSLambdaBasicExecutionRole
+      Role: !GetAtt ExecutionRole.Arn
+  
   SourceBucket:
     Type: AWS::S3::Bucket
     Properties:
