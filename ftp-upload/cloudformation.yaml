@@ -38,10 +38,23 @@ Parameters:
       - 'true'
       - 'false'
     Default: 'false'
-  SourceBuckets:
-    Description: List of the source bucket ARN permissions, e.g. 'arn:aws:s3::*:my-source-bucket-1/*,arn:aws:s3::*:my-source-bucket-2/*'
-    Type: CommaDelimitedList
+  SourceBucketName:
+    Description: Bucket where NLA files are generated
+    Type: String
+    Default: nla-analytics
 Resources:
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - lambda.amazonaws.com
   Lambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -61,12 +74,15 @@ Resources:
       CodeUri:
         Bucket: !Ref DeployBucket
         Key: !Sub ${Stack}/${Stage}/${App}/${App}.zip
-      Policies:
-        - AWSLambdaBasicExecutionRole
-        - Statement:
-            Effect: Allow
-            Action:
-              - s3:GetObject
-              - s3:ListObjects
-            Resource:
-              !Ref SourceBuckets
+      Events:
+        AthenaCSVEvent:
+          Type: S3
+          Properties:
+            Bucket: !Ref SourceBucket
+            Events: s3:ObjectCreated:*
+      Role: !GetAtt ExecutionRole.Arn
+  
+  SourceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref SourceBucketName

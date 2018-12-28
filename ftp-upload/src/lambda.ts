@@ -25,7 +25,7 @@ export async function handler(event) {
                     .then(ftpClient => streamS3FileToFtp(bucket, key, ftpClient))
             }
         })
-    )
+    );
 }
 
 /**
