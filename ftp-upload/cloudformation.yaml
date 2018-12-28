@@ -74,13 +74,6 @@ Resources:
             Events: s3:ObjectCreated:*
       Policies:
         - AWSLambdaBasicExecutionRole
-        - Statement:
-            Effect: Allow
-            Action:
-              - s3:GetObject
-              - s3:ListObjects
-            Resource:
-              !Ref SourceBucket
   SourceBucket:
     Type: AWS::S3::Bucket
     Properties:
