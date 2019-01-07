@@ -15,7 +15,7 @@ export async function handler(event) {
             const bucket = record.s3.bucket.name;
             const key = record.s3.object.key;
             const dst = key;
-            console.log(`Streaming ${bucket}/${key}`);
+            console.log(`Streaming ${bucket}/${key} to ${dst}`);
 
             if (config.ZipFile) {
                 return streamS3ToLocalZip(bucket, key)
