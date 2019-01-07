@@ -81,3 +81,8 @@ Resources:
         Bucket: !Ref DeployBucket
         Key: !Sub ${Stack}/${Stage}/${App}/${App}.zip
       Role: !GetAtt ExecutionRole.Arn
+      Events:
+        Daily:
+          Type: Schedule
+          Properties:
+            Schedule: cron(30 3 * * ? *)  # Runs daily at 03:30 AM GMT
