@@ -1,28 +1,29 @@
 import {Config} from './config';
 import {Readable} from "stream";
 
-let AWS = require('aws-sdk');
-let ftp = require('ftp');
-let fs = require('fs');
-let archiver = require('archiver');
+const AWS = require('aws-sdk');
+const ftp = require('ftp');
+const fs = require('fs');
+const archiver = require('archiver');
 
-let s3 = new AWS.S3();
-let config = new Config();
+const s3 = new AWS.S3();
+const config = new Config();
 
 export async function handler(event) {
     return Promise.all(
         event.Records.map(record => {
-            let bucket = record.s3.bucket.name;
-            let key = record.s3.object.key;
+            const bucket = record.s3.bucket.name;
+            const key = record.s3.object.key;
+            const dst = key;
             console.log(`Streaming ${bucket}/${key}`);
 
             if (config.ZipFile) {
                 return streamS3ToLocalZip(bucket, key)
                     .then(() => ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword))
-                    .then(ftpClient => streamLocalToFtp(`${key}.zip`, ftpClient))
+                    .then(ftpClient => streamLocalToFtp(`${key}.zip`, dst, ftpClient))
             } else {
                 return ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
-                    .then(ftpClient => streamS3FileToFtp(bucket, key, ftpClient))
+                    .then(ftpClient => streamS3FileToFtp(bucket, key, dst, ftpClient))
             }
         })
     );
@@ -33,7 +34,7 @@ export async function handler(event) {
  */
 function ftpConnect(host: string, user: string, password: string): Promise<any> {
     return new Promise((resolve, reject) => {
-        let ftpClient = new ftp();
+        const ftpClient = new ftp();
 
         ftpClient.connect({
             host,
@@ -79,13 +80,13 @@ function streamToFtp(stream: Readable, path: string, ftpClient): Promise<string>
 /**
  * Streams the given s3 object to the given ftp session.
  */
-function streamS3FileToFtp(bucket: string, key: string, ftpClient): Promise<string> {
-    let stream: Readable = s3.getObject({
+function streamS3FileToFtp(bucket: string, key: string, dst: string, ftpClient): Promise<string> {
+    const stream: Readable = s3.getObject({
         Bucket: bucket,
         Key: key
     }).createReadStream();
 
-    return streamToFtp(stream, key, ftpClient)
+    return streamToFtp(stream, dst, ftpClient)
 }
 
 /**
@@ -93,13 +94,13 @@ function streamS3FileToFtp(bucket: string, key: string, ftpClient): Promise<stri
  */
 function streamS3ToLocalZip(bucket: string, key: string): Promise<string> {
     return new Promise((resolve, reject) => {
-        let stream: Readable = s3.getObject({
+        const stream: Readable = s3.getObject({
             Bucket: bucket,
             Key: key
         }).createReadStream();
 
-        let output = fs.createWriteStream(`${key}.zip`);
-        let archive = archiver('zip');
+        const output = fs.createWriteStream(`${key}.zip`);
+        const archive = archiver('zip');
 
         archive.pipe(output);
 
@@ -125,8 +126,8 @@ function streamS3ToLocalZip(bucket: string, key: string): Promise<string> {
 /**
  * Streams the given local file to the given ftp session.
  */
-function streamLocalToFtp(path: string, ftpClient): Promise<string> {
-    let stream = fs.createReadStream(path);
+function streamLocalToFtp(path: string, dst: string, ftpClient): Promise<string> {
+    const stream = fs.createReadStream(path);
 
-    return streamToFtp(stream, path, ftpClient)
+    return streamToFtp(stream, dst, ftpClient)
 }
