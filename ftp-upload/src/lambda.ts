@@ -18,7 +18,8 @@ export async function handler(event) {
                 const bucket = record.s3.bucket.name;
                 const key = record.s3.object.key;
                 const today = new Date();
-                const yesterday = `${today.getFullYear()}${today.getMonth() + 1}${today.getDate() - 1}`;
+                today.setDate(today.getDate() - 1);
+                const yesterday = `${today.getFullYear()}${today.getMonth() + 1}${today.getDate()}`;
                 const dst = `theguardian_${yesterday}.${config.ZipFile ? 'zip' : 'csv'}`;
                 console.log(`Streaming ${bucket}/${key} to ${dst}`);
 
