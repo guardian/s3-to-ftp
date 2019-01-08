@@ -85,4 +85,4 @@ Resources:
         Daily:
           Type: Schedule
           Properties:
-            Schedule: cron(30 10 * * ? *)  # Runs daily at 10:30 AM GMT
+            Schedule: cron(00 14 * * ? *)  # Runs daily at 2 PM GMT
