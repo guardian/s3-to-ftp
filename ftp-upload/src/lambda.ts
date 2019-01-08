@@ -111,9 +111,9 @@ function streamS3ToLocalZip(bucket: string, key: string): Promise<string> {
             Key: key
         }).createReadStream();
 
-        const output = `/tmp/${key}.zip`;
+        const outputFile = `/tmp/${key}.zip`;
 
-        const output = fs.createWriteStream(output);
+        const output = fs.createWriteStream(outputFile);
         const archive = archiver('zip');
 
         archive.pipe(output);
@@ -122,7 +122,7 @@ function streamS3ToLocalZip(bucket: string, key: string): Promise<string> {
         archive.finalize();
 
         stream.on('end', () => {
-            resolve(output);
+            resolve(outputFile);
         });
 
         stream.on('error', (err: Error) => {
