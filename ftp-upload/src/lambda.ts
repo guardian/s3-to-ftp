@@ -25,8 +25,10 @@ export async function handler(event) {
 
                 if (config.ZipFile) {
                     return streamS3ToLocalZip(bucket, key)
-                        .then(() => ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword))
-                        .then(ftpClient => streamLocalToFtp(`${key}.zip`, dst, ftpClient))
+                        .then(fileName => 
+                            ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
+                                .then(ftpClient => streamLocalToFtp(fileName, dst, ftpClient))
+                        );
                 } else {
                     return ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
                         .then(ftpClient => streamS3FileToFtp(bucket, key, dst, ftpClient))
@@ -109,7 +111,9 @@ function streamS3ToLocalZip(bucket: string, key: string): Promise<string> {
             Key: key
         }).createReadStream();
 
-        const output = fs.createWriteStream(`${key}.zip`);
+        const output = `/tmp/${key}.zip`;
+
+        const output = fs.createWriteStream(output);
         const archive = archiver('zip');
 
         archive.pipe(output);
@@ -118,17 +122,17 @@ function streamS3ToLocalZip(bucket: string, key: string): Promise<string> {
         archive.finalize();
 
         stream.on('end', () => {
-            resolve(key)
+            resolve(output);
         });
 
         stream.on('error', (err: Error) => {
             console.log(`Error streaming ${key} to archive`, err);
-            reject(err)
+            reject(err);
         });
 
         archive.on('error', (err) => {
             console.log(`Error archiving ${key}`, err);
-            reject(err)
+            reject(err);
         });
     })
 }
