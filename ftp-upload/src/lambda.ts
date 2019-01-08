@@ -19,7 +19,7 @@ export async function handler(event) {
                 const key = record.s3.object.key;
                 const today = new Date();
                 today.setDate(today.getDate() - 1);
-                const yesterday = `${today.getFullYear()}${today.getMonth() + 1}${today.getDate()}`;
+                const yesterday = `${today.getFullYear()}${pad(today.getMonth() + 1)}${pad(today.getDate())}`;
                 const dst = `theguardian_${yesterday}.${config.ZipFile ? 'zip' : 'csv'}`;
                 console.log(`Streaming ${bucket}/${key} to ${dst}`);
 
@@ -33,6 +33,10 @@ export async function handler(event) {
                 }
             })
     );
+}
+
+function pad(n: number): string {
+    return n.toString(10).padStart(2, '0');
 }
 
 /**
