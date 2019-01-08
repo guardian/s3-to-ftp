@@ -11,21 +11,26 @@ const config = new Config();
 
 export async function handler(event) {
     return Promise.all(
-        event.Records.map(record => {
-            const bucket = record.s3.bucket.name;
-            const key = record.s3.object.key;
-            const dst = key;
-            console.log(`Streaming ${bucket}/${key} to ${dst}`);
+        event.Records
+            .filter(record => record.s3.object.key.endsWith('csv'))
+            .slice(0, 1)
+            .map(record => {
+                const bucket = record.s3.bucket.name;
+                const key = record.s3.object.key;
+                const today = new Date();
+                const yesterday = `${today.getFullYear()}${today.getMonth() + 1}${today.getDate() - 1}`;
+                const dst = `theguardian_${yesterday}.${config.ZipFile ? 'zip' : 'csv'}`;
+                console.log(`Streaming ${bucket}/${key} to ${dst}`);
 
-            if (config.ZipFile) {
-                return streamS3ToLocalZip(bucket, key)
-                    .then(() => ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword))
-                    .then(ftpClient => streamLocalToFtp(`${key}.zip`, dst, ftpClient))
-            } else {
-                return ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
-                    .then(ftpClient => streamS3FileToFtp(bucket, key, dst, ftpClient))
-            }
-        })
+                if (config.ZipFile) {
+                    return streamS3ToLocalZip(bucket, key)
+                        .then(() => ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword))
+                        .then(ftpClient => streamLocalToFtp(`${key}.zip`, dst, ftpClient))
+                } else {
+                    return ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
+                        .then(ftpClient => streamS3FileToFtp(bucket, key, dst, ftpClient))
+                }
+            })
     );
 }
 
