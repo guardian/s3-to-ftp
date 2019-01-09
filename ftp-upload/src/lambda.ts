@@ -11,6 +11,7 @@ const sts = new AWS.STS();
 
 export async function handler(event) {
     return new Promise((resolve, reject) => {
+        console.log(`Assuming role ${config.AthenaRole}`)
         sts.assumeRole({
             RoleArn: config.AthenaRole,
             RoleSessionName: 'ophan'
