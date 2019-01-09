@@ -1,5 +1,5 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Transform: 'AWS::Serverless-2016-10-31'
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: "AWS::Serverless-2016-10-31"
 Description: Runs the NLA query in Athena which will store results in one of our S3 buckets
 
 Parameters:
@@ -38,7 +38,7 @@ Resources:
   ExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      ManagedPolicyArns: 
+      ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       AssumeRolePolicyDocument:
         Statement:

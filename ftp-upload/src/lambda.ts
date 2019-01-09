@@ -1,132 +1,172 @@
 import {Config} from './config';
 import {Readable} from "stream";
 
-let AWS = require('aws-sdk');
-let ftp = require('ftp');
-let fs = require('fs');
-let archiver = require('archiver');
+const AWS = require('aws-sdk');
+const ftp = require('ftp');
+const fs = require('fs');
+const archiver = require('archiver');
 
-let s3 = new AWS.S3();
-let config = new Config();
+const config = new Config();
+const sts = new AWS.STS({ apiVersion: '2011-06-15' });
 
 export async function handler(event) {
-    return Promise.all(
-        event.Records.map(record => {
-            let bucket = record.s3.bucket.name;
-            let key = record.s3.object.key;
-            console.log(`Streaming ${bucket}/${key}`);
+    return new Promise((resolve, reject) => {
+        console.log(`Assuming role ${config.AthenaRole}`)
+        sts.assumeRole({
+            RoleArn: config.AthenaRole,
+            RoleSessionName: 'ophan'
+        }, (err, data) => {
+            if (err) 
+                reject(err);
+            else {
+                AWS.config.update({
+                    accessKeyId: data.Credentials.AccessKeyId,
+                    secretAccessKey: data.Credentials.SecretAccessKey,
+                    sessionToken: data.Credentials.SessionToken
+                });
+                resolve(event);
+            }
+        });
+    }).then(run);
+}
+
+async function run(event) {
+    const s3 = new AWS.S3();
+
+    return Promise.all(event.Records
+        .filter(record => record.s3.object.key.endsWith('csv'))
+        .slice(0, 1)
+        .map(record => {
+            const bucket = record.s3.bucket.name;
+            const key = record.s3.object.key;
+            const yesterday = new Date();
+            // this is how you do date math in js: just add or substract whichever field is necessary
+            yesterday.setDate(yesterday.getDate() - 1);
+            // produce YYYYMMDD (months are zero-indexed in js)
+            const yesterdayStr = `${yesterday.getFullYear()}${pad(yesterday.getMonth() + 1)}${pad(yesterday.getDate())}`;
+            // produce theguardian_YYYYMMDD.FF where FF is either zip or csv
+            const dst = `theguardian_${yesterdayStr}.${config.ZipFile ? 'zip' : 'csv'}`;
+            console.log(`Streaming ${bucket}/${key} to ${dst}`);
 
             if (config.ZipFile) {
                 return streamS3ToLocalZip(bucket, key)
-                    .then(() => ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword))
-                    .then(ftpClient => streamLocalToFtp(`${key}.zip`, ftpClient))
+                    .then(fileName => 
+                        ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
+                            .then(ftpClient => streamLocalToFtp(fileName, dst, ftpClient))
+                    );
             } else {
                 return ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
-                    .then(ftpClient => streamS3FileToFtp(bucket, key, ftpClient))
+                    .then(ftpClient => streamS3FileToFtp(bucket, key, dst, ftpClient))
             }
         })
-    );
-}
+    )
 
-/**
- * Creates a new ftp connection and returns the ftp client.
- */
-function ftpConnect(host: string, user: string, password: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-        let ftpClient = new ftp();
+    /**
+     * Creates a new ftp connection and returns the ftp client.
+     */
+    function ftpConnect(host: string, user: string, password: string): Promise<any> {
+        return new Promise((resolve, reject) => {
+            const ftpClient = new ftp();
 
-        ftpClient.connect({
-            host,
-            user,
-            password
-        });
+            ftpClient.connect({
+                host,
+                user,
+                password
+            });
 
-        ftpClient.on('ready', () => {
-            resolve(ftpClient)
-        });
-        ftpClient.on('error', (err) => {
-            console.log("FTP error: ", err);
-            reject(err)
-        });
-    })
-}
+            ftpClient.on('ready', () => {
+                resolve(ftpClient)
+            });
+            ftpClient.on('error', (err) => {
+                console.log("FTP error: ", err);
+                reject(err)
+            });
+        })
+    }
 
-/**
- * Pipes the stream to the ftp session under the given path.
- */
-function streamToFtp(stream: Readable, path: string, ftpClient): Promise<string> {
-    return new Promise((resolve, reject) => {
-        stream.on('readable', () => {
-            ftpClient.put(stream, path, (err) => {
-                if (err) {
-                    console.log(`Error writing ${path} to ftp`, err);
-                    reject(err)
-                }
-            })
-        });
+    /**
+     * Pipes the stream to the ftp session under the given path.
+     */
+    function streamToFtp(stream: Readable, path: string, ftpClient): Promise<string> {
+        return new Promise((resolve, reject) => {
+            stream.on('readable', () => {
+                ftpClient.put(stream, path, (err) => {
+                    if (err) {
+                        console.log(`Error writing ${path} to ftp`, err);
+                        reject(err)
+                    }
+                })
+            });
 
-        stream.on('end', () => {
-            resolve(path)
-        });
+            stream.on('end', () => {
+                resolve(path)
+            });
 
-        stream.on('error', (err: Error) => {
-            console.log(`Error streaming ${path} to ftp`, err);
-            reject(err)
-        });
-    })
-}
+            stream.on('error', (err: Error) => {
+                console.log(`Error streaming ${path} to ftp`, err);
+                reject(err)
+            });
+        })
+    }
 
-/**
- * Streams the given s3 object to the given ftp session.
- */
-function streamS3FileToFtp(bucket: string, key: string, ftpClient): Promise<string> {
-    let stream: Readable = s3.getObject({
-        Bucket: bucket,
-        Key: key
-    }).createReadStream();
-
-    return streamToFtp(stream, key, ftpClient)
-}
-
-/**
- * Streams the given s3 object to a local zip archive.
- */
-function streamS3ToLocalZip(bucket: string, key: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        let stream: Readable = s3.getObject({
+    /**
+     * Streams the given s3 object to the given ftp session.
+     */
+    function streamS3FileToFtp(bucket: string, key: string, dst: string, ftpClient): Promise<string> {
+        const stream: Readable = s3.getObject({
             Bucket: bucket,
             Key: key
         }).createReadStream();
 
-        let output = fs.createWriteStream(`${key}.zip`);
-        let archive = archiver('zip');
+        return streamToFtp(stream, dst, ftpClient)
+    }
 
-        archive.pipe(output);
+    /**
+     * Streams the given s3 object to a local zip archive.
+     */
+    function streamS3ToLocalZip(bucket: string, key: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const stream: Readable = s3.getObject({
+                Bucket: bucket,
+                Key: key
+            }).createReadStream();
 
-        archive.append(stream, { name: key });
-        archive.finalize();
+            const outputFile = `/tmp/${key}.zip`;
 
-        stream.on('end', () => {
-            resolve(key)
-        });
+            const output = fs.createWriteStream(outputFile);
+            const archive = archiver('zip');
 
-        stream.on('error', (err: Error) => {
-            console.log(`Error streaming ${key} to archive`, err);
-            reject(err)
-        });
+            archive.pipe(output);
 
-        archive.on('error', (err) => {
-            console.log(`Error archiving ${key}`, err);
-            reject(err)
-        });
-    })
+            archive.append(stream, { name: key });
+            archive.finalize();
+
+            stream.on('end', () => {
+                resolve(outputFile);
+            });
+
+            stream.on('error', (err: Error) => {
+                console.log(`Error streaming ${key} to archive`, err);
+                reject(err);
+            });
+
+            archive.on('error', (err) => {
+                console.log(`Error archiving ${key}`, err);
+                reject(err);
+            });
+        })
+    }
+
+    /**
+     * Streams the given local file to the given ftp session.
+     */
+    function streamLocalToFtp(path: string, dst: string, ftpClient): Promise<string> {
+        const stream = fs.createReadStream(path);
+
+        return streamToFtp(stream, dst, ftpClient)
+    }
 }
 
-/**
- * Streams the given local file to the given ftp session.
- */
-function streamLocalToFtp(path: string, ftpClient): Promise<string> {
-    let stream = fs.createReadStream(path);
-
-    return streamToFtp(stream, path, ftpClient)
+function pad(n: number): string {
+    return n.toString(10).padStart(2, '0');
 }

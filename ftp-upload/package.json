@@ -6,7 +6,7 @@
   "buildDir": "./target",
   "riffraffFile": "./riff-raff.yaml",
   "dependencies": {
-    "aws-sdk": "^2.264.1",
+    "aws-sdk": "^2.384.0",
     "typescript": "2.8.3",
     "moment": "2.22.2",
     "ftp": "0.3.10",
