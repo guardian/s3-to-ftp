@@ -7,7 +7,7 @@ const fs = require('fs');
 const archiver = require('archiver');
 
 const config = new Config();
-const sts = new AWS.STS();
+const sts = new AWS.STS({ apiVersion: '2011-06-15' });
 
 export async function handler(event) {
     return new Promise((resolve, reject) => {
