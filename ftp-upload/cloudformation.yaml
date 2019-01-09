@@ -58,7 +58,15 @@ Resources:
             Principal:
               Service:
                 - lambda.amazonaws.com
-  Lambda:
+      Path: /
+      Policies:
+        - PolicyName: assume-athena-query
+          PolicyDocument:
+            Statement:
+              Effect: Allow
+              Action: sts:AssumeRole
+              Resource: !Ref AthenaRole
+Lambda:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${App}-${Stage}
