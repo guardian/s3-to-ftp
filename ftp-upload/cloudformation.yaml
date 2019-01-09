@@ -66,34 +66,33 @@ Resources:
               Effect: Allow
               Action: sts:AssumeRole
               Resource: !Ref AthenaRole
-Lambda:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub ${App}-${Stage}
-      Description: Copies new s3 objects to an ftp server
-      Runtime: nodejs8.10
-      Handler: lambda.handler
-      MemorySize: 128
-      Timeout: 300
-      Environment:
-        Variables:
-          FtpHost: !Ref FtpHost
-          FtpUser: !Ref FtpUser
-          FtpPassword: !Ref FtpPassword
-          ZipFile: !Ref ZipFile
-          Stage: !Ref Stage
-          AthenaRole: !Ref AthenaRole
-      CodeUri:
-        Bucket: !Ref DeployBucket
-        Key: !Sub ${Stack}/${Stage}/${App}/${App}.zip
-      Events:
-        AthenaCSVEvent:
-          Type: S3
-          Properties:
-            Bucket: !Ref SourceBucket
-            Events: s3:ObjectCreated:*
-      Role: !GetAtt ExecutionRole.Arn
-  
+  Lambda:
+      Type: AWS::Serverless::Function
+      Properties:
+        FunctionName: !Sub ${App}-${Stage}
+        Description: Copies new s3 objects to an ftp server
+        Runtime: nodejs8.10
+        Handler: lambda.handler
+        MemorySize: 128
+        Timeout: 300
+        Environment:
+          Variables:
+            FtpHost: !Ref FtpHost
+            FtpUser: !Ref FtpUser
+            FtpPassword: !Ref FtpPassword
+            ZipFile: !Ref ZipFile
+            Stage: !Ref Stage
+            AthenaRole: !Ref AthenaRole
+        CodeUri:
+          Bucket: !Ref DeployBucket
+          Key: !Sub ${Stack}/${Stage}/${App}/${App}.zip
+        Events:
+          AthenaCSVEvent:
+            Type: S3
+            Properties:
+              Bucket: !Ref SourceBucket
+              Events: s3:ObjectCreated:*
+        Role: !GetAtt ExecutionRole.Arn
   SourceBucket:
     Type: AWS::S3::Bucket
     Properties:
