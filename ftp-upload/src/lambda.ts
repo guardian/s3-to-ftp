@@ -16,6 +16,7 @@ export async function handler(event) {
             RoleArn: config.AthenaRole,
             RoleSessionName: 'ophan'
         }, (err, data) => {
+            console.dir(arguments);
             if (err) reject(err);
             resolve(data.Credentials);
         });
