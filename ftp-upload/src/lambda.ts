@@ -25,7 +25,7 @@ export async function handler(event) {
 }
 
 async function run(event, ophanCreds) {
-    const s3 = new AWS.S3(ophanCreds);
+    const s3 = new AWS.S3({ credentials: ophanCreds });
 
     return Promise.all(event.Records
         .filter(record => record.s3.object.key.endsWith('csv'))
