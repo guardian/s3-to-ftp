@@ -24,14 +24,14 @@ export async function handler(event) {
                     secretAccessKey: data.Credentials.SecretAccessKey,
                     sessionToken: data.Credentials.SessionToken
                 });
-                resolve(data.Credentials);
+                resolve(event);
             }
         });
-    }).then(run.bind(null, event));
+    }).then(run);
 }
 
-async function run(event, ophanCreds) {
-    const s3 = new AWS.S3({ credentials: ophanCreds });
+async function run(event) {
+    const s3 = new AWS.S3();
 
     return Promise.all(event.Records
         .filter(record => record.s3.object.key.endsWith('csv'))
