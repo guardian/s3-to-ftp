@@ -39,10 +39,13 @@ async function run(event) {
         .map(record => {
             const bucket = record.s3.bucket.name;
             const key = record.s3.object.key;
-            const today = new Date();
-            today.setDate(today.getDate() - 1);
-            const yesterday = `${today.getFullYear()}${pad(today.getMonth() + 1)}${pad(today.getDate())}`;
-            const dst = `theguardian_${yesterday}.${config.ZipFile ? 'zip' : 'csv'}`;
+            const yesterday = new Date();
+            // this is how you do date math in js: just add or substract whichever field is necessary
+            yesterday.setDate(yesterday.getDate() - 1);
+            // produce YYYYMMDD (months are zero-indexed in js)
+            const yesterdayStr = `${yesterday.getFullYear()}${pad(yesterday.getMonth() + 1)}${pad(yesterday.getDate())}`;
+            // produce theguardian_YYYYMMDD.FF where FF is either zip or csv
+            const dst = `theguardian_${yesterdayStr}.${config.ZipFile ? 'zip' : 'csv'}`;
             console.log(`Streaming ${bucket}/${key} to ${dst}`);
 
             if (config.ZipFile) {
