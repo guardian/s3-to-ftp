@@ -42,6 +42,9 @@ Parameters:
     Description: Bucket where NLA files are generated
     Type: String
     Default: nla-analytics
+  AthenaRole:
+    Description: Role to assume in order to read files produced by Athena
+    Type: String
 Resources:
   ExecutionRole:
     Type: AWS::IAM::Role
@@ -71,6 +74,7 @@ Resources:
           FtpPassword: !Ref FtpPassword
           ZipFile: !Ref ZipFile
           Stage: !Ref Stage
+          AthenaRole: !Ref AthenaRole
       CodeUri:
         Bucket: !Ref DeployBucket
         Key: !Sub ${Stack}/${Stage}/${App}/${App}.zip
