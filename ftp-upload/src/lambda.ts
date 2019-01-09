@@ -18,8 +18,14 @@ export async function handler(event) {
         }, (err, data) => {
             if (err) 
                 reject(err);
-            else
+            else {
+                AWS.config.update({
+                    accessKeyId: data.Credentials.AccessKeyId,
+                    secretAccessKey: data.Credentials.SecretAccessKey,
+                    sessionToken: data.Credentials.SessionToken
+                });
                 resolve(data.Credentials);
+            }
         });
     }).then(run.bind(null, event));
 }
