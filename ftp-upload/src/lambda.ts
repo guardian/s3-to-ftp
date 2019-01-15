@@ -46,7 +46,7 @@ async function run(event) {
             const dst = `theguardian_${yesterday.getFullYear()}${pad(yesterday.getMonth() + 1)}${pad(yesterday.getDate())}`;
             console.log(`Streaming ${bucket}/${key} to ${dst}.zip`);
 
-            return streamS3ToLocalZip(bucket, key, dst)
+            return streamS3ToLocalZip(bucket, key, `${dst}.csv`)
                 .then(fileName => 
                     ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
                         .then(ftpClient => streamLocalToFtp(fileName, `${dst}.zip`, ftpClient))
@@ -119,7 +119,7 @@ async function run(event) {
 
             archive.pipe(output);
 
-            archive.append(stream, { name: `${dst}.csv` });
+            archive.append(stream, { name: dst });
             archive.finalize();
 
             stream.on('end', () => {
