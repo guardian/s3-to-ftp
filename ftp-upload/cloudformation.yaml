@@ -73,7 +73,6 @@ Resources:
             FtpHost: !Ref FtpHost
             FtpUser: !Ref FtpUser
             FtpPassword: !Ref FtpPassword
-            ZipFile: !Ref ZipFile
             Stage: !Ref Stage
             AthenaRole: !Ref AthenaRole
         CodeUri:
