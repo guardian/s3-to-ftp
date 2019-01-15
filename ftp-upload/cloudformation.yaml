@@ -31,13 +31,6 @@ Parameters:
     Description: Ftp password
     Type: String
     NoEcho: true
-  ZipFile:
-    Description: True if file should be zipped before uploading to ftp
-    Type: String
-    AllowedValues:
-      - 'true'
-      - 'false'
-    Default: 'false'
   SourceBucketName:
     Description: Bucket where NLA files are generated
     Type: String
