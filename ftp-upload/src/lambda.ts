@@ -42,22 +42,15 @@ async function run(event) {
             const yesterday = new Date();
             // this is how you do date math in js: just add or substract whichever field is necessary
             yesterday.setDate(yesterday.getDate() - 1);
-            // produce YYYYMMDD (months are zero-indexed in js)
-            const yesterdayStr = `${yesterday.getFullYear()}${pad(yesterday.getMonth() + 1)}${pad(yesterday.getDate())}`;
-            // produce theguardian_YYYYMMDD.FF where FF is either zip or csv
-            const dst = `theguardian_${yesterdayStr}.${config.ZipFile ? 'zip' : 'csv'}`;
-            console.log(`Streaming ${bucket}/${key} to ${dst}`);
+            // produce theguardian_YYYYMMDD (months are zero-indexed in js)
+            const destinationPath = `theguardian_${yesterday.getFullYear()}${pad(yesterday.getMonth() + 1)}${pad(yesterday.getDate())}`;
+            console.log(`Streaming ${bucket}/${key} to ${destinationPath}.zip`);
 
-            if (config.ZipFile) {
-                return streamS3ToLocalZip(bucket, key)
-                    .then(fileName => 
-                        ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
-                            .then(ftpClient => streamLocalToFtp(fileName, dst, ftpClient))
-                    );
-            } else {
-                return ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
-                    .then(ftpClient => streamS3FileToFtp(bucket, key, dst, ftpClient))
-            }
+            return streamS3ToLocalZip(bucket, key, `${destinationPath}.csv`)
+                .then(fileName => 
+                    ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
+                        .then(ftpClient => streamLocalToFtp(fileName, `${destinationPath}.zip`, ftpClient))
+                );
         })
     )
 
@@ -110,21 +103,9 @@ async function run(event) {
     }
 
     /**
-     * Streams the given s3 object to the given ftp session.
-     */
-    function streamS3FileToFtp(bucket: string, key: string, dst: string, ftpClient): Promise<string> {
-        const stream: Readable = s3.getObject({
-            Bucket: bucket,
-            Key: key
-        }).createReadStream();
-
-        return streamToFtp(stream, dst, ftpClient)
-    }
-
-    /**
      * Streams the given s3 object to a local zip archive.
      */
-    function streamS3ToLocalZip(bucket: string, key: string): Promise<string> {
+    function streamS3ToLocalZip(bucket: string, key: string, dst: string): Promise<string> {
         return new Promise((resolve, reject) => {
             const stream: Readable = s3.getObject({
                 Bucket: bucket,
@@ -138,7 +119,7 @@ async function run(event) {
 
             archive.pipe(output);
 
-            archive.append(stream, { name: key });
+            archive.append(stream, { name: dst });
             archive.finalize();
 
             stream.on('end', () => {
