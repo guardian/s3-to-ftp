@@ -43,13 +43,13 @@ async function run(event) {
             // this is how you do date math in js: just add or substract whichever field is necessary
             yesterday.setDate(yesterday.getDate() - 1);
             // produce theguardian_YYYYMMDD (months are zero-indexed in js)
-            const dst = `theguardian_${yesterday.getFullYear()}${pad(yesterday.getMonth() + 1)}${pad(yesterday.getDate())}`;
-            console.log(`Streaming ${bucket}/${key} to ${dst}.zip`);
+            const destinationPath = `theguardian_${yesterday.getFullYear()}${pad(yesterday.getMonth() + 1)}${pad(yesterday.getDate())}`;
+            console.log(`Streaming ${bucket}/${key} to ${destinationPath}.zip`);
 
-            return streamS3ToLocalZip(bucket, key, `${dst}.csv`)
+            return streamS3ToLocalZip(bucket, key, `${destinationPath}.csv`)
                 .then(fileName => 
                     ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
-                        .then(ftpClient => streamLocalToFtp(fileName, `${dst}.zip`, ftpClient))
+                        .then(ftpClient => streamLocalToFtp(fileName, `${destinationPath}.zip`, ftpClient))
                 );
         })
     )
