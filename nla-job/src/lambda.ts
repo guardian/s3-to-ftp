@@ -48,7 +48,7 @@ function runQuery(when: Date, err, credentials) {
       ResultConfiguration: {
         OutputLocation: config.Destination,
       },
-      ClientRequestToken: when.toString(),
+      ClientRequestToken: `request-${when.toString()}`,
       QueryExecutionContext: {
         Database: config.Schema
       }
