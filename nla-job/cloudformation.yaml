@@ -22,7 +22,7 @@ Parameters:
     Type: String
     Default: content-api-dist
   DestinationBucket:
-    Description: List of the source bucket ARN permissions, e.g. 'arn:aws:s3::*:my-source-bucket-1/*,arn:aws:s3::*:my-source-bucket-2/*'
+    Description: List of the source bucket ARN permissions, e.g. 'arn:aws:s3:::my-source-bucket-1'
     Type: String
   DestinationBucketURI:
     Description: Same as above but using the s3:// notation
@@ -60,7 +60,9 @@ Resources:
             Statement:
               Effect: Allow
               Action: s3:*
-              Resource: !Ref DestinationBucket
+              Resource: 
+                - !Sub ${DestinationBucket}
+                - !Sub ${DestinationBucket}/*
 
   Lambda:
     Type: AWS::Serverless::Function
