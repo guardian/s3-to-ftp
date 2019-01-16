@@ -3,7 +3,7 @@ let AWS = require('aws-sdk');
 
 /**
  * For testing locally:
- * `yarn run local <source bucket> <object key>`
+ * `yarn run local <source bucket> <object key> <year> <month> <day>`
  */
 
 AWS.config = new AWS.Config();
@@ -30,5 +30,6 @@ run({
                 }
             }
         }
-    ]
+    ],
+    When: new Date(`${process.argv[4]}-${process.argv[5]}-${process.argv[6]}`)
 });
