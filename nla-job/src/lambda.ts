@@ -4,19 +4,25 @@ let AWS = require('aws-sdk');
 
 const config = new Config();
 
-export function handler() {
+export function handler(when: any) {
+  if (!(when instanceof Date)) {
+    when = new Date();
+    when.setDate(when.getDate() - 1);
+  }
+  console.log(`Assuming role ${config.AthenaRole}...`)
   const chain = new AWS.CredentialProviderChain();
   chain.providers.unshift(() => new AWS.TemporaryCredentials({
     RoleArn: config.AthenaRole,
     RoleSessionName: 'ophan'
   }));
   chain.providers.unshift(() => new AWS.SharedIniFileCredentials({ profile: 'ophan' }))
-  chain.resolve(runQuery);
+  chain.resolve(runQuery.bind(null, when));
 }
 
-export function runQuery(err, credentials) {
+function runQuery(when: Date, err, credentials) {
   if (err) console.log(err, err.stack);
   else {
+    console.log(`Getting data for ${when}...`)
     let athena = new AWS.Athena({ 
       region: 'eu-west-1', 
       accessKeyId: credentials.accessKeyId,
@@ -24,15 +30,13 @@ export function runQuery(err, credentials) {
       sessionToken: credentials.sessionToken
     });
     
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
     const query = `
       SELECT web_title, url_raw, pv.path AS path, count(1) AS pageviews
       FROM   clean.pageview pv
             INNER JOIN clean.content_new c ON pv.path = c.path
             CROSS JOIN UNNEST (content_type_tag) AS A (a_type_tag)
             CROSS JOIN UNNEST (tone_tag) AS A (a_tone_tag)
-      WHERE  received_date = date'${yesterday.toISOString().slice(0, 10)}'
+      WHERE  received_date = date'${when.toISOString().slice(0, 10)}'
       AND    platform = 'NEXT_GEN'
       AND    (a_type_tag = 'type/article' OR a_tone_tag = 'tone/minutebyminute')
       GROUP BY 1,2,3
@@ -44,7 +48,7 @@ export function runQuery(err, credentials) {
       ResultConfiguration: {
         OutputLocation: config.Destination,
       },
-      ClientRequestToken: yesterday.toString(),
+      ClientRequestToken: `request-${when.toString()}`,
       QueryExecutionContext: {
         Database: config.Schema
       }

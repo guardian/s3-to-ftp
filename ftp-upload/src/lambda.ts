@@ -39,11 +39,16 @@ async function run(event) {
         .map(record => {
             const bucket = record.s3.bucket.name;
             const key = record.s3.object.key;
-            const yesterday = new Date();
-            // this is how you do date math in js: just add or substract whichever field is necessary
-            yesterday.setDate(yesterday.getDate() - 1);
+            let when;
+            if (event.When && event.When instanceof Date) {
+                when = new Date(event.When)
+            } else {
+                when = new Date();
+                // this is how you do date math in js: just add or substract whichever field is necessary
+                when.setDate(when.getDate() - 1);
+            }
             // produce theguardian_YYYYMMDD (months are zero-indexed in js)
-            const destinationPath = `theguardian_${yesterday.getFullYear()}${pad(yesterday.getMonth() + 1)}${pad(yesterday.getDate())}`;
+            const destinationPath = `theguardian_${when.getFullYear()}${pad(when.getMonth() + 1)}${pad(when.getDate())}`;
             console.log(`Streaming ${bucket}/${key} to ${destinationPath}.zip`);
 
             return streamS3ToLocalZip(bucket, key, `${destinationPath}.csv`)
