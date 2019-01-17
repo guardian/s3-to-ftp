@@ -40,7 +40,7 @@ async function run(event) {
             const bucket = record.s3.bucket.name;
             const key = record.s3.object.key;
             let when;
-            if (event.When && event.When instanceof Date) {
+            if (event.When && /\d{4}-\d{2}-\d{2}/.test(event.When)) {
                 when = new Date(event.When)
             } else {
                 when = new Date();
