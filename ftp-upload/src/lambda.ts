@@ -41,7 +41,7 @@ async function run(event) {
             const key = record.s3.object.key;
             let when;
             if (event.When && event.When instanceof Date) {
-                when = event.When
+                when = new Date(event.When)
             } else {
                 when = new Date();
                 // this is how you do date math in js: just add or substract whichever field is necessary

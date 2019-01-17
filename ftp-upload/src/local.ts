@@ -31,5 +31,5 @@ run({
             }
         }
     ],
-    When: new Date(`${process.argv[4]}-${process.argv[5]}-${process.argv[6]}`)
+    When: `${process.argv[4]}-${process.argv[5]}-${process.argv[6]}`
 });
