@@ -92,12 +92,11 @@ async function run(event) {
                     if (err) {
                         console.log(`Error writing ${path} to ftp`, err);
                         reject(err)
+                    } else {
+                        ftpClient.end();
+                        resolve(path);
                     }
-                })
-            });
-
-            stream.on('end', () => {
-                resolve(path)
+                });
             });
 
             stream.on('error', (err: Error) => {
