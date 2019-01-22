@@ -87,10 +87,6 @@ async function run(event) {
      */
     function streamToFtp(stream: Readable, path: string, ftpClient): Promise<string> {
         return new Promise((resolve, reject) => {
-            ftpClient.on('end', () => {
-                resolve(path);
-            });
-
             stream.on('readable', () => {
                 ftpClient.put(stream, path, (err) => {
                     if (err) {
@@ -98,6 +94,8 @@ async function run(event) {
                         reject(err)
                     } else {
                         ftpClient.end();
+                        console.log(`Successfully uploaded ${path} to NLA`)
+                        resolve(path);
                     }
                 });
             });
