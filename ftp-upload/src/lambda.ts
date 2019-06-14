@@ -16,9 +16,10 @@ export async function handler(event) {
             RoleArn: config.AthenaRole,
             RoleSessionName: 'ophan'
         }, (err, data) => {
-            if (err) 
+            if (err) {
+                console.error(`Can't assume role ${config.AthenaRole}`, err)
                 reject(err);
-            else {
+            } else {
                 AWS.config.update({
                     accessKeyId: data.Credentials.AccessKeyId,
                     secretAccessKey: data.Credentials.SecretAccessKey,
@@ -83,31 +84,6 @@ async function run(event) {
     }
 
     /**
-     * Pipes the stream to the ftp session under the given path.
-     */
-    function streamToFtp(stream: Readable, path: string, ftpClient): Promise<string> {
-        return new Promise((resolve, reject) => {
-            stream.on('readable', () => {
-                ftpClient.put(stream, path, (err) => {
-                    if (err) {
-                        console.log(`Error writing ${path} to ftp`, err);
-                        reject(err)
-                    } else {
-                        ftpClient.end();
-                        console.log(`Successfully uploaded ${path} to NLA`)
-                        resolve(path);
-                    }
-                });
-            });
-
-            stream.on('error', (err: Error) => {
-                console.log(`Error streaming ${path} to ftp`, err);
-                reject(err)
-            });
-        })
-    }
-
-    /**
      * Streams the given s3 object to a local zip archive.
      */
     function streamS3ToLocalZip(bucket: string, key: string, dst: string): Promise<string> {
@@ -122,12 +98,8 @@ async function run(event) {
             const output = fs.createWriteStream(outputFile);
             const archive = archiver('zip');
 
-            archive.pipe(output);
-
-            archive.append(stream, { name: dst });
-            archive.finalize();
-
-            stream.on('end', () => {
+            output.on('close', () => {
+                console.log(`Finished zipping CSV file to $outputFile (${archive.pointer()} bytes)`)
                 resolve(outputFile);
             });
 
@@ -136,10 +108,24 @@ async function run(event) {
                 reject(err);
             });
 
+            // good practice to catch warnings (ie stat failures and other non-blocking errors)
+            archive.on('warning', (err) => {
+                if (err.code === 'ENOENT') {
+                    console.warn("Woopsie, something weird happened", err);
+                } else {
+                    console.error(`Error archiving ${key} to ${outputFile}`, err);
+                    reject(err);
+                }
+            });
+
             archive.on('error', (err) => {
                 console.log(`Error archiving ${key}`, err);
                 reject(err);
             });
+
+            archive.pipe(output);
+            archive.append(stream, { name: dst });
+            archive.finalize();
         })
     }
 
@@ -149,7 +135,25 @@ async function run(event) {
     function streamLocalToFtp(path: string, dst: string, ftpClient): Promise<string> {
         const stream = fs.createReadStream(path);
 
-        return streamToFtp(stream, dst, ftpClient)
+        return new Promise((resolve, reject) => {
+            stream.on('readable', () => {
+                ftpClient.put(stream, dst, (err) => {
+                    if (err) {
+                        console.log(`Error writing ${dst} to ftp`, err);
+                        reject(err)
+                    } else {
+                        ftpClient.end();
+                        console.log(`Successfully uploaded ${dst} to NLA`)
+                        resolve(dst);
+                    }
+                });
+            });
+
+            stream.on('error', (err: Error) => {
+                console.log(`Error streaming ${dst} to ftp`, err);
+                reject(err)
+            });
+        })
     }
 }
 
