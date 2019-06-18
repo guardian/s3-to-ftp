@@ -67,18 +67,21 @@ async function run(event) {
         return new Promise((resolve, reject) => {
             const ftpClient = new ftp();
 
-            ftpClient.connect({
-                host,
-                user,
-                password
-            });
-
             ftpClient.on('ready', () => {
+                console.log("And we're in!");
                 resolve(ftpClient)
             });
             ftpClient.on('error', (err) => {
                 console.log("FTP error: ", err);
                 reject(err)
+            });
+
+            console.log(`Connecting to ${host}...`);
+
+            ftpClient.connect({
+                host,
+                user,
+                password
             });
         })
     }
@@ -99,7 +102,7 @@ async function run(event) {
             const archive = archiver('zip');
 
             output.on('close', () => {
-                console.log(`Finished zipping CSV file to $outputFile (${archive.pointer()} bytes)`)
+                console.log(`Finished zipping CSV file to ${outputFile} (${(archive.pointer()/1024/1024).toFixed(2)}MB bytes)`)
                 resolve(outputFile);
             });
 
@@ -133,25 +136,18 @@ async function run(event) {
      * Streams the given local file to the given ftp session.
      */
     function streamLocalToFtp(path: string, dst: string, ftpClient): Promise<string> {
-        const stream = fs.createReadStream(path);
-
         return new Promise((resolve, reject) => {
-            stream.on('readable', () => {
-                ftpClient.put(stream, dst, (err) => {
-                    if (err) {
-                        console.log(`Error writing ${dst} to ftp`, err);
-                        reject(err)
-                    } else {
-                        ftpClient.end();
-                        console.log(`Successfully uploaded ${dst} to NLA`)
-                        resolve(dst);
-                    }
-                });
-            });
+            console.log(`Now uploading ${path} to ${dst}`);
 
-            stream.on('error', (err: Error) => {
-                console.log(`Error streaming ${dst} to ftp`, err);
-                reject(err)
+            ftpClient.put(path, dst, (err) => {
+                if (err) {
+                    console.log(`Error writing ${dst} to ftp`, err);
+                    reject(err)
+                } else {
+                    ftpClient.end();
+                    console.log(`Successfully uploaded ${dst} to NLA`)
+                    resolve(dst);
+                }
             });
         })
     }
