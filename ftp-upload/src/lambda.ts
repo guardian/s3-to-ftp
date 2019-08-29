@@ -2,7 +2,7 @@ import {Config} from './config';
 import {Readable} from "stream";
 
 const AWS = require('aws-sdk');
-const ftp = require('ftp');
+const FtpClient = require('ftp');
 const fs = require('fs');
 const archiver = require('archiver');
 
@@ -63,17 +63,18 @@ async function run(event) {
     /**
      * Creates a new ftp connection and returns the ftp client.
      */
-    function ftpConnect(host: string, user: string, password: string): Promise<any> {
+    function ftpConnect(host: string, user: string, password: string): Promise<object> {
         return new Promise((resolve, reject) => {
-            const ftpClient = new ftp();
+            const ftpClient = new FtpClient();
 
             ftpClient.on('ready', () => {
                 console.log("And we're in!");
-                resolve(ftpClient)
+                resolve(ftpClient);
             });
+
             ftpClient.on('error', (err) => {
-                console.log("FTP error: ", err);
-                reject(err)
+                console.log(`"FTP error: ${err}`);
+                reject(err);
             });
 
             console.log(`Connecting to ${host}...`);
@@ -91,24 +92,28 @@ async function run(event) {
      */
     function streamS3ToLocalZip(bucket: string, key: string, dst: string): Promise<string> {
         return new Promise((resolve, reject) => {
-            const stream: Readable = s3.getObject({
+            const request = s3.getObject({
                 Bucket: bucket,
                 Key: key
-            }).createReadStream();
+            }, (error, data) => {
+                if (error) {
+                    console.error(`Failed to fetch ${bucket}/${key}: ${error}`);
+                    reject(error);
+                } else {
+                    console.log(`Received ${bucket}/${key} (${(data.ContentLength/1024/1024).toFixed(2)}MB, ${data.ContentType})`);
+                    resolve(data.Body);
+                }
+            });
 
+            request.send();
+        }).then((stream: ReadableStream) => new Promise((resolve, reject) => {
             const outputFile = `/tmp/${key}.zip`;
-
             const output = fs.createWriteStream(outputFile);
             const archive = archiver('zip');
 
             output.on('close', () => {
-                console.log(`Finished zipping CSV file to ${outputFile} (${(archive.pointer()/1024/1024).toFixed(2)}MB bytes)`)
+                console.log(`Finished zipping CSV file to ${outputFile} (${(archive.pointer()/1024/1024).toFixed(2)}MB)`);
                 resolve(outputFile);
-            });
-
-            stream.on('error', (err: Error) => {
-                console.log(`Error streaming ${key} to archive`, err);
-                reject(err);
             });
 
             // good practice to catch warnings (ie stat failures and other non-blocking errors)
@@ -126,10 +131,12 @@ async function run(event) {
                 reject(err);
             });
 
+            console.log(`Zipping ${bucket}/${key} into ${outputFile}`);
+
             archive.pipe(output);
             archive.append(stream, { name: dst });
             archive.finalize();
-        })
+        }));
     }
 
     /**
@@ -142,10 +149,10 @@ async function run(event) {
             ftpClient.put(path, dst, (err) => {
                 if (err) {
                     console.log(`Error writing ${dst} to ftp`, err);
-                    reject(err)
+                    reject(err);
                 } else {
                     ftpClient.end();
-                    console.log(`Successfully uploaded ${dst} to NLA`)
+                    console.log(`Successfully uploaded ${dst} to NLA`);
                     resolve(dst);
                 }
             });
