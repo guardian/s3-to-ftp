@@ -53,12 +53,41 @@ async function run(event) {
             console.log(`Streaming ${bucket}/${key} to ${destinationPath}.zip`);
 
             return streamS3ToLocalZip(bucket, key, `${destinationPath}.csv`)
-                .then(fileName => 
-                    ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
-                        .then(ftpClient => streamLocalToFtp(fileName, `${destinationPath}.zip`, ftpClient))
-                );
+                .then(fileName => {
+                    const destination: string = destinationPath + '.zip';
+                    return Promise.all([
+                        uploadToNLA(fileName, destination),
+                        uploadToS3(config.DestinationBucket, fileName, destination)
+                    ]);
+                });
         })
     )
+
+    async function uploadToNLA(fileName: string, destination: string): Promise<string> {
+        return ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
+            .then(ftpClient => streamLocalToFtp(fileName, destination, ftpClient));
+    }
+
+    async function uploadToS3(bucket: String, fileName: string, destination: string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            s3.putObject({
+                Body: fs.createReadStream(fileName),
+                Bucket: bucket,
+                Key: destination,
+                ContentEncoding: 'deflate',
+                ContentType: 'text/csv'
+            }, (err) => {
+                if (err) {
+                    console.error(`Could not upload ${fileName} to S3: ${err}`);
+                    reject(err);
+                } else {
+                    console.log(`Successfully uploaded ${fileName} to S3 as ${bucket}/${destination}`);
+                    resolve();
+                }
+            });
+        });
+    }
+
 
     /**
      * Creates a new ftp connection and returns the ftp client.

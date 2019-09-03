@@ -35,6 +35,9 @@ Parameters:
     Description: Bucket where NLA files are generated
     Type: String
     Default: nla-analytics
+  ZipDestinationBucketName:
+    Description: Bucket where NLA zip files are stored
+    Type: String
   AthenaRole:
     Description: Role to assume in order to read files produced by Athena
     Type: String
@@ -75,6 +78,7 @@ Resources:
             FtpPassword: !Ref FtpPassword
             Stage: !Ref Stage
             AthenaRole: !Ref AthenaRole
+            DestinationBucket: !Ref ZipDestinationBucketName
         CodeUri:
           Bucket: !Ref DeployBucket
           Key: !Sub ${Stack}/${Stage}/${App}/${App}.zip
