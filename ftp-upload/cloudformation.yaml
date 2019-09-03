@@ -41,6 +41,9 @@ Parameters:
   AthenaRole:
     Description: Role to assume in order to read files produced by Athena
     Type: String
+  AlarmTopic:
+    Description: 'A SNS topic ARN for Cloudwatch alerts '
+    Type: String
 Resources:
   ExecutionRole:
     Type: AWS::IAM::Role
@@ -93,3 +96,51 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Ref SourceBucketName
+  ZipSizeDivergeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName:
+        !Sub nla-pageview-${Stage}-alarm-zip-size-divergence
+      AlarmDescription: Alert on ZIP size divergence
+      Namespace: AWS/Lambda
+      Metrics:
+        - Expression: FtpSize - ZipSize
+        - Id: FtpSize
+          MetricStat:
+            Metric:
+              MetricName: FtpFileSize
+            Period: 60
+            Stat: Sum
+        - Id: ZipSize
+          MetricStat:
+            Metric:
+              MetricName: ZipFileSize
+            Period: 60
+            Stat: Sum
+      Unit: Bytes
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: '0'
+      EvaluationPeriods: '1'
+      AlarmActions:
+        - Ref: AlarmTopic
+  EmptyCSVAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName:
+        !Sub nla-pageview-${Stage}-alarm-empty-csv
+      AlarmDescription: Alert on receiving a small CSV file from Athena
+      Namespace: AWS/Lambda
+      MetricName: EmptyCSV
+      Dimensions:
+        - Name: FunctionName
+          Value:
+            !Ref Lambda
+      Statistic: Sum
+      ComparisonOperator: LessThanOrEqualToThreshold
+      Threshold: 100
+      Unit: Megabytes
+      Period: 60
+      EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - Ref: AlarmTopic
