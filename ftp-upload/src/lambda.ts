@@ -7,6 +7,7 @@ const fs = require('fs');
 const archiver = require('archiver');
 
 const config = new Config();
+const cloudwatch = new AWS.CloudWatch({ apiVersion: '2010-08-01' });
 const sts = new AWS.STS({ apiVersion: '2011-06-15' });
 
 export async function handler(event) {
@@ -129,11 +130,12 @@ async function run(event) {
                     console.error(`Failed to fetch ${bucket}/${key}: ${error}`);
                     reject(error);
                 } else {
-                    console.log(`Received ${bucket}/${key} (${(data.ContentLength/1024/1024).toFixed(2)}MB, ${data.ContentType})`);
-                    resolve(data.Body);
+                    const fileSizeInMB = data.ContentLength/1024/1024;
+                    console.log(`Received ${bucket}/${key} (${fileSizeInMB.toFixed(2)}MB, ${data.ContentType})`);
+                    sendToCloudwatch('SizeOfCSV', fileSizeInMB, 'Megabytes').then(() => resolve(data.Body));
                 }
             });
-
+            
             request.send();
         }).then((stream: ReadableStream) => new Promise((resolve, reject) => {
             const outputFile = `/tmp/${key}.zip`;
@@ -186,6 +188,20 @@ async function run(event) {
                 }
             });
         })
+    }
+
+    function sendToCloudwatch(metricName: String, value: number, unit: string): Promise<void> {
+        return new Promise(resolve => {
+            cloudwatch.putMetricData({
+                MetricData: [{
+                    MetricName: metricName,
+                    Value: value,
+                    Unit: unit
+                }]
+            }, function() {
+                resolve();
+            })
+        });
     }
 }
 
