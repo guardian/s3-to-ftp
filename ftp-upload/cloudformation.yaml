@@ -96,33 +96,6 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Ref SourceBucketName
-  ZipSizeDivergeAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName:
-        !Sub nla-pageview-${Stage}-alarm-zip-size-divergence
-      AlarmDescription: Alert on ZIP size divergence
-      Namespace: AWS/Lambda
-      Metrics:
-        - Expression: FtpSize - ZipSize
-        - Id: FtpSize
-          MetricStat:
-            Metric:
-              MetricName: FtpFileSize
-            Period: 60
-            Stat: Sum
-        - Id: ZipSize
-          MetricStat:
-            Metric:
-              MetricName: ZipFileSize
-            Period: 60
-            Stat: Sum
-      Unit: Bytes
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      Threshold: '0'
-      EvaluationPeriods: '1'
-      AlarmActions:
-        - Ref: AlarmTopic
   EmptyCSVAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -130,13 +103,13 @@ Resources:
         !Sub nla-pageview-${Stage}-alarm-empty-csv
       AlarmDescription: Alert on receiving a small CSV file from Athena
       Namespace: AWS/Lambda
-      MetricName: EmptyCSV
+      MetricName: SizeOfCSV
       Dimensions:
         - Name: FunctionName
           Value:
             !Ref Lambda
       Statistic: Sum
-      ComparisonOperator: LessThanOrEqualToThreshold
+      ComparisonOperator: LessThanThreshold
       Threshold: 100
       Unit: Megabytes
       Period: 60

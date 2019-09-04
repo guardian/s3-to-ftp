@@ -91,7 +91,7 @@ async function streamS3ToLocalZip(bucket: string, key: string, dst: string): Pro
         output.on('close', () => {
             const fileSize = archive.pointer();
             console.log(`Finished zipping CSV file to ${outputFile} (${(fileSize/1024/1024).toFixed(2)}MB)`);
-            sendToCloudwatch('ZipFileSize', fileSize, 'Bytes').then(() => resolve(outputFile));
+            resolve(outputFile);
         });
 
         // good practice to catch warnings (ie stat failures and other non-blocking errors)
