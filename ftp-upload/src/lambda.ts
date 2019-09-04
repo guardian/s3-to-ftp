@@ -9,6 +9,7 @@ const archiver = require('archiver');
 const config = new Config();
 const cloudwatch = new AWS.CloudWatch({ apiVersion: '2010-08-01' });
 const sts = new AWS.STS({ apiVersion: '2011-06-15' });
+const s3 = new AWS.S3();
 
 export async function handler(event) {
     return new Promise((resolve, reject) => {
@@ -33,8 +34,6 @@ export async function handler(event) {
 }
 
 async function run(event) {
-    const s3 = new AWS.S3();
-
     return Promise.all(event.Records
         .filter(record => record.s3.object.key.endsWith('csv'))
         .slice(0, 1)
@@ -63,146 +62,148 @@ async function run(event) {
                 });
         })
     )
+}
 
-    async function uploadToNLA(fileName: string, destination: string): Promise<string> {
-        return ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
-            .then(ftpClient => streamLocalToFtp(fileName, destination, ftpClient));
-    }
-
-    async function uploadToS3(bucket: String, fileName: string, destination: string): Promise<void> {
-        return new Promise((resolve, reject) => {
-            s3.putObject({
-                Body: fs.createReadStream(fileName),
-                Bucket: bucket,
-                Key: destination,
-                ContentEncoding: 'deflate',
-                ContentType: 'text/csv'
-            }, (err) => {
-                if (err) {
-                    console.error(`Could not upload ${fileName} to S3: ${err}`);
-                    reject(err);
-                } else {
-                    console.log(`Successfully uploaded ${fileName} to S3 as ${bucket}/${destination}`);
-                    resolve();
-                }
-            });
+/**
+ * Streams the given s3 object to a local zip archive.
+ */
+async function streamS3ToLocalZip(bucket: string, key: string, dst: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const request = s3.getObject({
+            Bucket: bucket,
+            Key: key
+        }, (error, data) => {
+            if (error) {
+                console.error(`Failed to fetch ${bucket}/${key}: ${error}`);
+                reject(error);
+            } else {
+                const fileSizeInMB = data.ContentLength/1024/1024;
+                console.log(`Received ${bucket}/${key} (${fileSizeInMB.toFixed(2)}MB, ${data.ContentType})`);
+                sendToCloudwatch('SizeOfCSV', fileSizeInMB, 'Megabytes').then(() => resolve(data.Body));
+            }
         });
-    }
+        
+        request.send();
+    }).then((stream: ReadableStream) => new Promise((resolve, reject) => {
+        const outputFile = `/tmp/${key}.zip`;
+        const output = fs.createWriteStream(outputFile);
+        const archive = archiver('zip');
 
+        output.on('close', () => {
+            const fileSize = archive.pointer();
+            console.log(`Finished zipping CSV file to ${outputFile} (${(fileSize/1024/1024).toFixed(2)}MB)`);
+            sendToCloudwatch('ZipFileSize', fileSize, 'Bytes').then(() => resolve(outputFile));
+        });
 
-    /**
-     * Creates a new ftp connection and returns the ftp client.
-     */
-    function ftpConnect(host: string, user: string, password: string): Promise<object> {
-        return new Promise((resolve, reject) => {
-            const ftpClient = new FtpClient();
-
-            ftpClient.on('ready', () => {
-                console.log("And we're in!");
-                resolve(ftpClient);
-            });
-
-            ftpClient.on('error', (err) => {
-                console.log(`"FTP error: ${err}`);
+        // good practice to catch warnings (ie stat failures and other non-blocking errors)
+        archive.on('warning', (err) => {
+            if (err.code === 'ENOENT') {
+                console.warn("Woopsie, something weird happened", err);
+            } else {
+                console.error(`Error archiving ${key} to ${outputFile}`, err);
                 reject(err);
-            });
+            }
+        });
 
-            console.log(`Connecting to ${host}...`);
+        archive.on('error', (err) => {
+            console.log(`Error archiving ${key}`, err);
+            reject(err);
+        });
 
-            ftpClient.connect({
-                host,
-                user,
-                password
-            });
-        })
-    }
+        console.log(`Zipping ${bucket}/${key} into ${outputFile}`);
 
-    /**
-     * Streams the given s3 object to a local zip archive.
-     */
-    function streamS3ToLocalZip(bucket: string, key: string, dst: string): Promise<string> {
-        return new Promise((resolve, reject) => {
-            const request = s3.getObject({
-                Bucket: bucket,
-                Key: key
-            }, (error, data) => {
-                if (error) {
-                    console.error(`Failed to fetch ${bucket}/${key}: ${error}`);
-                    reject(error);
-                } else {
-                    const fileSizeInMB = data.ContentLength/1024/1024;
-                    console.log(`Received ${bucket}/${key} (${fileSizeInMB.toFixed(2)}MB, ${data.ContentType})`);
-                    sendToCloudwatch('SizeOfCSV', fileSizeInMB, 'Megabytes').then(() => resolve(data.Body));
-                }
-            });
-            
-            request.send();
-        }).then((stream: ReadableStream) => new Promise((resolve, reject) => {
-            const outputFile = `/tmp/${key}.zip`;
-            const output = fs.createWriteStream(outputFile);
-            const archive = archiver('zip');
+        archive.pipe(output);
+        archive.append(stream, { name: dst });
+        archive.finalize();
+    }));
+}
 
-            output.on('close', () => {
-                console.log(`Finished zipping CSV file to ${outputFile} (${(archive.pointer()/1024/1024).toFixed(2)}MB)`);
-                resolve(outputFile);
-            });
+async function uploadToNLA(fileName: string, destination: string): Promise<string> {
+    return ftpConnect(config.FtpHost, config.FtpUser, config.FtpPassword)
+        .then(ftpClient => streamLocalToFtp(fileName, destination, ftpClient));
+}
 
-            // good practice to catch warnings (ie stat failures and other non-blocking errors)
-            archive.on('warning', (err) => {
-                if (err.code === 'ENOENT') {
-                    console.warn("Woopsie, something weird happened", err);
-                } else {
-                    console.error(`Error archiving ${key} to ${outputFile}`, err);
-                    reject(err);
-                }
-            });
-
-            archive.on('error', (err) => {
-                console.log(`Error archiving ${key}`, err);
+async function uploadToS3(bucket: String, fileName: string, destination: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        s3.putObject({
+            Body: fs.createReadStream(fileName),
+            Bucket: bucket,
+            Key: destination
+        }, (err) => {
+            if (err) {
+                console.error(`Could not upload ${fileName} to S3: ${err}`);
                 reject(err);
-            });
-
-            console.log(`Zipping ${bucket}/${key} into ${outputFile}`);
-
-            archive.pipe(output);
-            archive.append(stream, { name: dst });
-            archive.finalize();
-        }));
-    }
-
-    /**
-     * Streams the given local file to the given ftp session.
-     */
-    function streamLocalToFtp(path: string, dst: string, ftpClient): Promise<string> {
-        return new Promise((resolve, reject) => {
-            console.log(`Now uploading ${path} to ${dst}`);
-
-            ftpClient.put(path, dst, (err) => {
-                if (err) {
-                    console.log(`Error writing ${dst} to ftp`, err);
-                    reject(err);
-                } else {
-                    ftpClient.end();
-                    console.log(`Successfully uploaded ${dst} to NLA`);
-                    resolve(dst);
-                }
-            });
-        })
-    }
-
-    function sendToCloudwatch(metricName: String, value: number, unit: string): Promise<void> {
-        return new Promise(resolve => {
-            cloudwatch.putMetricData({
-                MetricData: [{
-                    MetricName: metricName,
-                    Value: value,
-                    Unit: unit
-                }]
-            }, function() {
+            } else {
+                console.log(`Successfully uploaded ${fileName} to S3 as ${bucket}/${destination}`);
                 resolve();
-            })
+            }
         });
-    }
+    });
+}
+
+/**
+ * Creates a new ftp connection and returns the ftp client.
+ */
+async function ftpConnect(host: string, user: string, password: string): Promise<object> {
+    return new Promise((resolve, reject) => {
+        const ftpClient = new FtpClient();
+
+        ftpClient.on('ready', () => {
+            console.log("And we're in!");
+            resolve(ftpClient);
+        });
+
+        ftpClient.on('error', (err) => {
+            console.log(`"FTP error: ${err}`);
+            reject(err);
+        });
+
+        console.log(`Connecting to ${host}...`);
+
+        ftpClient.connect({
+            host,
+            user,
+            password
+        });
+    })
+}
+
+/**
+ * Streams the given local file to the given ftp session.
+ */
+async function streamLocalToFtp(path: string, dst: string, ftpClient): Promise<string> {
+    return new Promise((resolve, reject) => {
+        console.log(`Now uploading ${path} to ${dst}`);
+
+        ftpClient.put(path, dst, (err) => {
+            if (err) {
+                console.log(`Error writing ${dst} to ftp`, err);
+                reject(err);
+            } else {
+                ftpClient.end();
+                console.log(`Successfully uploaded ${dst} to NLA`);
+                resolve(dst);
+            }
+        });
+    })
+}
+
+/**
+ * Sends a metric datum to CloudWatch
+ */
+async function sendToCloudwatch(metricName: String, value: number, unit: string): Promise<void> {
+    return new Promise(resolve => {
+        cloudwatch.putMetricData({
+            MetricData: [{
+                MetricName: metricName,
+                Value: value,
+                Unit: unit
+            }]
+        }, function(err) {
+            if (err) console.error(`Could not send metric data to CloudWatch: ${err}`)
+            resolve();
+        })
+    });
 }
 
 function pad(n: number): string {
