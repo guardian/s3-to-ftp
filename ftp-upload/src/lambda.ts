@@ -1,5 +1,4 @@
 import {Config} from './config';
-import {Readable} from "stream";
 
 const AWS = require('aws-sdk');
 const FtpClient = require('ftp');
@@ -175,14 +174,20 @@ async function streamLocalToFtp(path: string, dst: string, ftpClient): Promise<s
     return new Promise((resolve, reject) => {
         console.log(`Now uploading ${path} to ${dst}`);
 
+        ftpClient.on('end', () => {
+            console.log(`Successfully uploaded ${dst} to NLA`);
+        });
+
+        ftpClient.on('close', () => {
+            resolve(dst);
+        });
+
         ftpClient.put(path, dst, (err) => {
             if (err) {
                 console.log(`Error writing ${dst} to ftp`, err);
                 reject(err);
             } else {
                 ftpClient.end();
-                console.log(`Successfully uploaded ${dst} to NLA`);
-                resolve(dst);
             }
         });
     })
