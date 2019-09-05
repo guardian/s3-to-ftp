@@ -2,7 +2,7 @@ import {Config} from './config';
 
 const AWS = require('aws-sdk');
 const FtpClient = require('ftp');
-const fs = require('fs');
+const fs = require('@icetee/ftp');
 const archiver = require('archiver');
 
 const config = new Config();
