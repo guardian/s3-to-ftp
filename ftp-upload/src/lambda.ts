@@ -8,7 +8,7 @@ const archiver = require('archiver');
 const config = new Config();
 const cloudwatch = new AWS.CloudWatch({ apiVersion: '2010-08-01' });
 const sts = new AWS.STS({ apiVersion: '2011-06-15' });
-const s3 = new AWS.S3();
+const s3 = new AWS.S3({ region: 'eu-west-1' });
 
 export async function handler(event) {
     return new Promise((resolve, reject) => {
