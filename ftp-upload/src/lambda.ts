@@ -89,8 +89,8 @@ async function streamS3ToLocalZip(bucket: string, key: string, dst: string): Pro
         const archive = archiver('zip');
 
         output.on('close', () => {
-            const fileSize = archive.pointer();
-            console.log(`Finished zipping CSV file to ${outputFile} (${(fileSize/1024/1024).toFixed(2)}MB)`);
+            const fileSizeInMB = archive.pointer()/1024/1024;
+            console.log(`Finished zipping CSV file to ${outputFile} (${fileSizeInMB.toFixed(2)}MB)`);
             resolve(outputFile);
         });
 
