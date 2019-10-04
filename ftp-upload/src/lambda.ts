@@ -95,11 +95,11 @@ async function streamS3ToLocalZip(bucket: string, key: string, dst: string): Pro
         // good practice to catch warnings (ie stat failures and other non-blocking errors)
         archive.on('warning', (err) => {
             if (err.code === 'ENOENT') {
-                console.warn("Woopsie, something weird happened", err);
+                console.warn("Woopsie, something weird happened", err);                
             } else {
                 console.error(`Error archiving ${key} to ${outputFile}`, err);
-                reject(err);
             }
+            reject(err);
         });
 
         archive.on('error', (err) => {
