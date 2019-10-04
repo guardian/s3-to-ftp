@@ -6,7 +6,7 @@ const fs = require('fs');
 const archiver = require('archiver');
 
 const config = new Config();
-const cloudwatch = new AWS.CloudWatch({ apiVersion: '2010-08-01' });
+const cloudwatch = new AWS.CloudWatch({ apiVersion: '2010-08-01', region: 'eu-west-1' });
 const sts = new AWS.STS({ apiVersion: '2011-06-15' });
 const s3 = new AWS.S3({ region: 'eu-west-1' });
 
@@ -32,7 +32,7 @@ export async function handler(event) {
     }).then(run);
 }
 
-async function run(event) {
+export async function run(event) {
     return Promise.all(event.Records
         .filter(record => record.s3.object.key.endsWith('csv'))
         .slice(0, 1)
@@ -78,11 +78,9 @@ async function streamS3ToLocalZip(bucket: string, key: string, dst: string): Pro
             } else {
                 const fileSizeInMB = data.ContentLength/1024/1024;
                 console.log(`Received ${bucket}/${key} (${fileSizeInMB.toFixed(2)}MB, ${data.ContentType})`);
-                sendToCloudwatch('SizeOfCSV', fileSizeInMB, 'Megabytes').then(() => resolve(data.Body));
+                return sendToCloudwatch('SizeOfCSV', fileSizeInMB, 'Megabytes').then(() => resolve(data.Body));
             }
         });
-        
-        request.send();
     }).then((stream: ReadableStream) => new Promise((resolve, reject) => {
         const outputFile = `/tmp/${key}.zip`;
         const output = fs.createWriteStream(outputFile);
@@ -124,6 +122,8 @@ async function uploadToNLA(fileName: string, destination: string): Promise<strin
 
 async function uploadToS3(bucket: String, fileName: string, destination: string): Promise<void> {
     return new Promise((resolve, reject) => {
+        console.log(`Now uploading ${fileName} to s3://${bucket}/${destination}`);
+
         s3.putObject({
             Body: fs.createReadStream(fileName),
             Bucket: bucket,
@@ -203,7 +203,8 @@ async function sendToCloudwatch(metricName: String, value: number, unit: string)
                 MetricName: metricName,
                 Value: value,
                 Unit: unit
-            }]
+            }],
+            Namespace: 'AWS/Lambda'
         }, function(err) {
             if (err) console.error(`Could not send metric data to CloudWatch: ${err}`)
             resolve();
