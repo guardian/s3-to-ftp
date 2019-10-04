@@ -1,63 +1,66 @@
 import {Config} from './config';
 
 let AWS = require('aws-sdk');
+const sts = new AWS.STS({ apiVersion: '2011-06-15' });
+const athena = new AWS.Athena({ region: 'eu-west-1' }); 
 
 const config = new Config();
 
-export function handler(when: any) {
-  if (!(when instanceof Date)) {
-    when = new Date();
-    when.setDate(when.getDate() - 1);
-  }
-  console.log(`Assuming role ${config.AthenaRole}...`)
-  const chain = new AWS.CredentialProviderChain();
-  chain.providers.unshift(() => new AWS.TemporaryCredentials({
-    RoleArn: config.AthenaRole,
-    RoleSessionName: 'ophan'
-  }));
-  chain.providers.unshift(() => new AWS.SharedIniFileCredentials({ profile: 'ophan' }))
-  chain.resolve(runQuery.bind(null, when));
+export function handler() {
+  const when = new Date();
+  when.setDate(when.getDate() - 1);
+
+  return new Promise((resolve, reject) => {
+    console.log(`Assuming role ${config.AthenaRole}...`)
+    sts.assumeRole({
+      RoleArn: config.AthenaRole,
+      RoleSessionName: 'ophan'
+    }, (err, data) => {
+        if (err) {
+            console.error(`Can't assume role ${config.AthenaRole}`, err)
+            reject(err);
+        } else {
+            AWS.config.update({
+                accessKeyId: data.Credentials.AccessKeyId,
+                secretAccessKey: data.Credentials.SecretAccessKey,
+                sessionToken: data.Credentials.SessionToken
+            });
+            resolve();
+        }
+    });
+  }).then(() => runQuery(when))
 }
 
-function runQuery(when: Date, err, credentials) {
-  if (err) console.log(err, err.stack);
-  else {
-    console.log(`Getting data for ${when}...`)
-    let athena = new AWS.Athena({ 
-      region: 'eu-west-1', 
-      accessKeyId: credentials.accessKeyId,
-      secretAccessKey: credentials.secretAccessKey,
-      sessionToken: credentials.sessionToken
-    });
-    
-    const query = `
-      SELECT web_title, url_raw, pv.path AS path, count(1) AS pageviews
-      FROM   clean.pageview pv
-            INNER JOIN clean.content_new c ON pv.path = c.path
-            CROSS JOIN UNNEST (content_type_tag) AS A (a_type_tag)
-            CROSS JOIN UNNEST (tone_tag) AS A (a_tone_tag)
-      WHERE  received_date = date'${when.toISOString().slice(0, 10)}'
-      AND    platform = 'NEXT_GEN'
-      AND    (a_type_tag = 'type/article' OR a_tone_tag = 'tone/minutebyminute')
-      GROUP BY 1,2,3
-      ORDER BY 4 DESC
-    `;
+export function runQuery(when: Date) {
+  console.log(`Getting data for ${when}...`)
 
-    const params = {
-      QueryString: query,
-      ResultConfiguration: {
-        OutputLocation: config.Destination,
-      },
-      ClientRequestToken: `request-${when.toString()}`,
-      QueryExecutionContext: {
-        Database: config.Schema
-      }
-    };
+  const query = `
+    SELECT web_title, url_raw, pv.path AS path, count(1) AS pageviews
+    FROM   clean.pageview pv
+          INNER JOIN clean.content_new c ON pv.path = c.path
+          CROSS JOIN UNNEST (content_type_tag) AS A (a_type_tag)
+          CROSS JOIN UNNEST (tone_tag) AS A (a_tone_tag)
+    WHERE  received_date = date'${when.toISOString().slice(0, 10)}'
+    AND    platform = 'NEXT_GEN'
+    AND    (a_type_tag = 'type/article' OR a_tone_tag = 'tone/minutebyminute')
+    GROUP BY 1,2,3
+    ORDER BY 4 DESC
+  `;
 
-    return athena.startQueryExecution(params, function(err, data) {
-      if (err) console.log(err, err.stack); // an error occurred
-      else     console.log(data);           // successful response
-    });
-  }
+  const params = {
+    QueryString: query,
+    ResultConfiguration: {
+      OutputLocation: config.Destination,
+    },
+    ClientRequestToken: `request-${when.toString()}`,
+    QueryExecutionContext: {
+      Database: config.Schema
+    }
+  };
+
+  return athena.startQueryExecution(params, function(err, data) {
+    if (err) console.log(err, err.stack); // an error occurred
+    else     console.log(data);           // successful response
+  });
 }
 
