@@ -3,4 +3,5 @@ export class Config {
     FtpUser: string = process.env.FtpUser;
     FtpPassword: string = process.env.FtpPassword;
     AthenaRole: string = process.env.AthenaRole;
+    DestinationBucket: string = process.env.DestinationBucket;
 }

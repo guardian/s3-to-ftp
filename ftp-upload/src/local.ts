@@ -1,4 +1,4 @@
-import { handler } from './lambda';
+import { run as runLambda } from './lambda';
 let AWS = require('aws-sdk');
 
 /**
@@ -13,7 +13,7 @@ AWS.config.sessionToken = process.env.AWS_SESSION_TOKEN;
 AWS.config.region = "eu-west-1";
 
 async function run(event) {
-    await handler(event)
+    await runLambda(event)
         .then(result => console.log(`Result: ${result}`))
         .catch(err => console.log(`Error: ${err}`))
 }
