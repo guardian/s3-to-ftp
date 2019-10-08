@@ -22,9 +22,7 @@ export async function handler(event) {
             } else {
                 resolve(new AWS.S3({ 
                     region: 'eu-west-1',
-                    accessKeyId: data.Credentials.AccessKeyId,
-                    secretAccessKey: data.Credentials.SecretAccessKey,
-                    sessionToken: data.Credentials.SessionToken
+                    credentials: data.Credentials
                 }));
             }
         });
@@ -68,7 +66,7 @@ export async function run(s3, event) {
 async function streamS3ToLocalZip(s3: any, bucket: string, key: string, dst: string): Promise<string> {
     return new Promise((resolve, reject) => {
         console.log('Starting S3 getObject request');
-        
+
         const request = s3.getObject({
             Bucket: bucket,
             Key: key
