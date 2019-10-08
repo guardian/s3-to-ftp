@@ -1,5 +1,4 @@
 import {Config} from './config';
-import { request } from 'https';
 
 const AWS = require('aws-sdk');
 const FtpClient = require('@icetee/ftp');
@@ -69,29 +68,23 @@ export async function run(event) {
  * Streams the given s3 object to a local zip archive.
  */
 async function streamS3ToLocalZip(s3: any, bucket: string, key: string, dst: string): Promise<string> {
+    console.log('Starting S3 getObject request');
+    const result = await s3.getObject({
+        Bucket: bucket,
+        Key: key
+    }).promise();
+
+    const fileSizeInMB = result.ContentLength/1024/1024;
+    console.log(`Received ${bucket}/${key} (${fileSizeInMB.toFixed(2)}MB, ${result.ContentType})`);
+    
+    await sendToCloudwatch('SizeOfCSV', fileSizeInMB, 'Megabytes')
+    
     return new Promise((resolve, reject) => {
-        console.log('Starting S3 getObject request');
-        
-        const request = s3.getObject({
-            Bucket: bucket,
-            Key: key
-        });
-        request.on('error', error => {
-            console.error(`Failed to fetch ${bucket}/${key}: ${error}`);
-            reject(error);
-        });
-        request.on('success', response => {
-            const data = response.data;
-            const fileSizeInMB = data.ContentLength/1024/1024;
-            console.log(`Received ${bucket}/${key} (${fileSizeInMB.toFixed(2)}MB, ${data.ContentType})`);
-            sendToCloudwatch('SizeOfCSV', fileSizeInMB, 'Megabytes').then(() => resolve(data.Body));
-        });
-        request.send();
-    }).then((stream: ReadableStream) => new Promise((resolve, reject) => {
+        const stream = result.Body;    
         const outputFile = `/tmp/${key}.zip`;
         const output = fs.createWriteStream(outputFile);
         const archive = archiver('zip');
-
+    
         output.on('close', () => {
             const fileSizeInMB = archive.pointer()/1024/1024;
             console.log(`Finished zipping CSV file to ${outputFile} (${fileSizeInMB.toFixed(2)}MB)`);
@@ -118,7 +111,7 @@ async function streamS3ToLocalZip(s3: any, bucket: string, key: string, dst: str
         archive.pipe(output);
         archive.append(stream, { name: dst });
         archive.finalize();
-    }));
+    });
 }
 
 async function uploadToNLA(fileName: string, destination: string): Promise<string> {
@@ -127,23 +120,13 @@ async function uploadToNLA(fileName: string, destination: string): Promise<strin
 }
 
 async function uploadToS3(s3: any, bucket: String, fileName: string, destination: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-        console.log(`Now uploading ${fileName} to s3://${bucket}/${destination}`);
+    console.log(`Now uploading ${fileName} to s3://${bucket}/${destination}`);
 
-        s3.putObject({
-            Body: fs.createReadStream(fileName),
-            Bucket: bucket,
-            Key: destination
-        }, (err) => {
-            if (err) {
-                console.error(`Could not upload ${fileName} to S3: ${err}`);
-                reject(err);
-            } else {
-                console.log(`Successfully uploaded ${fileName} to S3 as ${bucket}/${destination}`);
-                resolve();
-            }
-        });
-    });
+    await s3.putObject({
+        Body: fs.createReadStream(fileName),
+        Bucket: bucket,
+        Key: destination
+    }).promise();
 }
 
 /**
