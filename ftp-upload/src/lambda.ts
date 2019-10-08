@@ -26,13 +26,15 @@ export async function handler(event) {
                     secretAccessKey: data.Credentials.SecretAccessKey,
                     sessionToken: data.Credentials.SessionToken
                 });
-                resolve(new AWS.S3({ region: 'eu-west-1' }));
+                resolve(event);
             }
         });
-    }).then(s3 => run(s3, event));
+    }).then(run);
 }
 
-export async function run(s3, event) {
+export async function run(event) {
+    const s3 = new AWS.S3({ region: 'eu-west-1' });
+
     return Promise.all(event.Records
         .filter(record => record.s3.object.key.endsWith('csv'))
         .slice(0, 1)
