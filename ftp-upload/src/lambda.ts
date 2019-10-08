@@ -20,12 +20,12 @@ export async function handler(event) {
                 console.error(`Can't assume role ${config.AthenaRole}`, err)
                 reject(err);
             } else {
-                resolve(new AWS.S3({ 
-                    region: 'eu-west-1',
+                AWS.config.update({
                     accessKeyId: data.Credentials.AccessKeyId,
                     secretAccessKey: data.Credentials.SecretAccessKey,
                     sessionToken: data.Credentials.SessionToken
-                }));
+                });
+                resolve(new AWS.S3({ region: 'eu-west-1' }));
             }
         });
     }).then(s3 => run(s3, event));
@@ -69,7 +69,7 @@ async function streamS3ToLocalZip(s3: any, bucket: string, key: string, dst: str
     return new Promise((resolve, reject) => {
         console.log('Starting S3 getObject request');
         
-        const request = s3.getObject({
+        s3.getObject({
             Bucket: bucket,
             Key: key
         }, (error, data) => {
