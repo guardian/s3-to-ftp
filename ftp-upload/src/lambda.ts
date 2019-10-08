@@ -8,7 +8,6 @@ const archiver = require('archiver');
 const config = new Config();
 const cloudwatch = new AWS.CloudWatch({ apiVersion: '2010-08-01', region: 'eu-west-1' });
 const sts = new AWS.STS({ apiVersion: '2011-06-15' });
-const s3 = new AWS.S3({ region: 'eu-west-1' });
 
 export async function handler(event) {
     return new Promise((resolve, reject) => {
@@ -21,18 +20,18 @@ export async function handler(event) {
                 console.error(`Can't assume role ${config.AthenaRole}`, err)
                 reject(err);
             } else {
-                AWS.config.update({
+                resolve(new AWS.S3({ 
+                    region: 'eu-west-1',
                     accessKeyId: data.Credentials.AccessKeyId,
                     secretAccessKey: data.Credentials.SecretAccessKey,
                     sessionToken: data.Credentials.SessionToken
-                });
-                resolve(event);
+                }));
             }
         });
-    }).then(run);
+    }).then(s3 => run(s3, event));
 }
 
-export async function run(event) {
+export async function run(s3, event) {
     return Promise.all(event.Records
         .filter(record => record.s3.object.key.endsWith('csv'))
         .slice(0, 1)
@@ -51,12 +50,12 @@ export async function run(event) {
             const destinationPath = `theguardian_${when.getFullYear()}${pad(when.getMonth() + 1)}${pad(when.getDate())}`;
             console.log(`Streaming ${bucket}/${key} to ${destinationPath}.zip`);
 
-            return streamS3ToLocalZip(bucket, key, `${destinationPath}.csv`)
+            return streamS3ToLocalZip(s3, bucket, key, `${destinationPath}.csv`)
                 .then(fileName => {
                     const destination: string = destinationPath + '.zip';
                     return Promise.all([
                         uploadToNLA(fileName, destination),
-                        uploadToS3(config.DestinationBucket, fileName, destination)
+                        uploadToS3(s3, config.DestinationBucket, fileName, destination)
                     ]);
                 });
         })
@@ -66,7 +65,7 @@ export async function run(event) {
 /**
  * Streams the given s3 object to a local zip archive.
  */
-async function streamS3ToLocalZip(bucket: string, key: string, dst: string): Promise<string> {
+async function streamS3ToLocalZip(s3: any, bucket: string, key: string, dst: string): Promise<string> {
     return new Promise((resolve, reject) => {
         const request = s3.getObject({
             Bucket: bucket,
@@ -120,7 +119,7 @@ async function uploadToNLA(fileName: string, destination: string): Promise<strin
         .then(ftpClient => streamLocalToFtp(fileName, destination, ftpClient));
 }
 
-async function uploadToS3(bucket: String, fileName: string, destination: string): Promise<void> {
+async function uploadToS3(s3: any, bucket: String, fileName: string, destination: string): Promise<void> {
     return new Promise((resolve, reject) => {
         console.log(`Now uploading ${fileName} to s3://${bucket}/${destination}`);
 

@@ -13,7 +13,7 @@ AWS.config.sessionToken = process.env.AWS_SESSION_TOKEN;
 AWS.config.region = "eu-west-1";
 
 async function run(event) {
-    await runLambda(event)
+    await runLambda(new AWS.S3({ region: 'eu-west-1' }), event)
         .then(result => console.log(`Result: ${result}`))
         .catch(err => console.log(`Error: ${err}`))
 }
