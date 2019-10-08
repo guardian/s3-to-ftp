@@ -2,7 +2,6 @@ import {Config} from './config';
 
 let AWS = require('aws-sdk');
 const sts = new AWS.STS({ apiVersion: '2011-06-15' });
-const athena = new AWS.Athena({ region: 'eu-west-1' }); 
 
 const config = new Config();
 
@@ -20,18 +19,18 @@ export function handler() {
             console.error(`Can't assume role ${config.AthenaRole}`, err)
             reject(err);
         } else {
-            AWS.config.update({
-                accessKeyId: data.Credentials.AccessKeyId,
-                secretAccessKey: data.Credentials.SecretAccessKey,
-                sessionToken: data.Credentials.SessionToken
-            });
-            resolve();
+            resolve(new AWS.Athena({
+              region: 'eu-west-1',
+              accessKeyId: data.Credentials.AccessKeyId,
+              secretAccessKey: data.Credentials.SecretAccessKey,
+              sessionToken: data.Credentials.SessionToken
+            }));
         }
     });
-  }).then(() => runQuery(when))
+  }).then(athena => runQuery(athena, when));
 }
 
-export function runQuery(when: Date) {
+export function runQuery(athena: any, when: Date) {
   console.log(`Getting data for ${when}...`)
 
   const query = `

@@ -10,4 +10,4 @@ AWS.config.region = "eu-west-1";
 const args = process.argv.slice(2);
 
 const when = new Date(`${args[0]}-${args[1]}-${args[2]}`);
-runQuery(when);
+runQuery(new AWS.Athena({ region: 'eu-west-1' }), when);
