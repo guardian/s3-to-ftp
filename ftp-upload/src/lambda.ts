@@ -67,6 +67,8 @@ export async function run(s3, event) {
  */
 async function streamS3ToLocalZip(s3: any, bucket: string, key: string, dst: string): Promise<string> {
     return new Promise((resolve, reject) => {
+        console.log('Starting S3 getObject request');
+        
         const request = s3.getObject({
             Bucket: bucket,
             Key: key
