@@ -1,4 +1,5 @@
 import {Config} from './config';
+import { request } from 'https';
 
 const AWS = require('aws-sdk');
 const FtpClient = require('@icetee/ftp');
@@ -69,19 +70,21 @@ async function streamS3ToLocalZip(s3: any, bucket: string, key: string, dst: str
     return new Promise((resolve, reject) => {
         console.log('Starting S3 getObject request');
         
-        s3.getObject({
+        const request = s3.getObject({
             Bucket: bucket,
             Key: key
-        }, (error, data) => {
-            if (error) {
-                console.error(`Failed to fetch ${bucket}/${key}: ${error}`);
-                reject(error);
-            } else {
-                const fileSizeInMB = data.ContentLength/1024/1024;
-                console.log(`Received ${bucket}/${key} (${fileSizeInMB.toFixed(2)}MB, ${data.ContentType})`);
-                return sendToCloudwatch('SizeOfCSV', fileSizeInMB, 'Megabytes').then(() => resolve(data.Body));
-            }
         });
+        request.on('error', error => {
+            console.error(`Failed to fetch ${bucket}/${key}: ${error}`);
+            reject(error);
+        });
+        request.on('success', response => {
+            const data = response.data;
+            const fileSizeInMB = data.ContentLength/1024/1024;
+            console.log(`Received ${bucket}/${key} (${fileSizeInMB.toFixed(2)}MB, ${data.ContentType})`);
+            sendToCloudwatch('SizeOfCSV', fileSizeInMB, 'Megabytes').then(() => resolve(data.Body));
+        });
+        request.send();
     }).then((stream: ReadableStream) => new Promise((resolve, reject) => {
         const outputFile = `/tmp/${key}.zip`;
         const output = fs.createWriteStream(outputFile);
