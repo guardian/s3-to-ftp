@@ -14,7 +14,22 @@ argparse@^1.0.7:
   dependencies:
     sprintf-js "~1.0.2"
 
-aws-sdk@^2.472.0, aws-sdk@^2.519.0:
+aws-sdk@2.549.0:
+  version "2.549.0"
+  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.549.0.tgz#8338cd406c9e8b4b67edf2215b9b7c249a79f6e6"
+  integrity sha512-dzkdgZWRG9CyPNjQ/yt82XKjv5OO8Ce2SLJeBnd6KOKkxCwjldOsPRv0MSsx02hQv/Izva8yaUPesftqdJamew==
+  dependencies:
+    buffer "4.9.1"
+    events "1.1.1"
+    ieee754 "1.1.13"
+    jmespath "0.15.0"
+    querystring "0.2.0"
+    sax "1.2.1"
+    url "0.10.3"
+    uuid "3.3.2"
+    xml2js "0.4.19"
+
+aws-sdk@^2.519.0:
   version "2.543.0"
   resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.543.0.tgz#08b69a6fab9b3ab08e329888d06a8c4ee583f26d"
   integrity sha512-ABHsA4W7LLYnTBCgtbTt0NF7+66nMCtdcJuAn30+RGzF0bOw3lCguqzootFrMlIOXklddQFJ9kKTXd+p/+uCVQ==

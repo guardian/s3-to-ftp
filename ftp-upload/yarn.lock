@@ -57,10 +57,10 @@ async@^2.6.3:
   dependencies:
     lodash "^4.17.14"
 
-aws-sdk@2.544.0:
-  version "2.544.0"
-  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.544.0.tgz#d99eeada8237ee67699ce6644f8070eeb84996e7"
-  integrity sha512-wwiBJgAUGKXY/xoCSrUXVZnNtefoH3YcPwGxQrQXOIDnLMQ32yh/SWc52qmwdxA7WJzpTcIj8y+5keH3P1LYaw==
+aws-sdk@2.549.0:
+  version "2.549.0"
+  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.549.0.tgz#8338cd406c9e8b4b67edf2215b9b7c249a79f6e6"
+  integrity sha512-dzkdgZWRG9CyPNjQ/yt82XKjv5OO8Ce2SLJeBnd6KOKkxCwjldOsPRv0MSsx02hQv/Izva8yaUPesftqdJamew==
   dependencies:
     buffer "4.9.1"
     events "1.1.1"
