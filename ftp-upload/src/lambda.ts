@@ -32,7 +32,7 @@ export async function handler(event) {
 }
 
 export async function run(event) {
-    const s3 = new AWS.S3({ region: 'eu-west-1' });
+    const s3 = new AWS.S3();
 
     return Promise.all(event.Records
         .filter(record => record.s3.object.key.endsWith('csv'))
@@ -72,7 +72,7 @@ async function streamS3ToLocalZip(s3: any, bucket: string, key: string, dst: str
     const result = await s3.getObject({
         Bucket: bucket,
         Key: key
-    }).promise();
+    }).promise().catch(err => console.log(`Cannot get the CSV from S3: ${err}`));
 
     const fileSizeInMB = result.ContentLength/1024/1024;
     console.log(`Received ${bucket}/${key} (${fileSizeInMB.toFixed(2)}MB, ${result.ContentType})`);
