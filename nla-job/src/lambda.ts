@@ -27,7 +27,11 @@ export function handler() {
             }));
         }
     });
-  }).then(athena => runQuery(athena, when));
+  })
+    .then(athena => runQuery(athena, when))
+    .catch(err => {
+      console.log(`Something went wrong: ${err}`)
+    });
 }
 
 export function runQuery(athena: any, when: Date) {
