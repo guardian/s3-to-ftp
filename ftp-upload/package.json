@@ -1,5 +1,8 @@
 {
   "name": "s3-to-ftp",
+  "engines": {
+    "node": ">=10.0.0"
+  },
   "isAwsLambda": true,
   "cloudformation": false,
   "projectName": "Content Platforms::s3-to-ftp",
