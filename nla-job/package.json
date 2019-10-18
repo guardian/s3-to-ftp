@@ -1,5 +1,8 @@
 {
   "name": "nla-to-s3",
+  "engines": {
+    "node": ">=10.0.0"
+  },
   "isAwsLambda": true,
   "cloudformation": false,
   "projectName": "Content Platforms::nla-to-s3",
