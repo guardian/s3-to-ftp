@@ -122,7 +122,7 @@ async function uploadToNLA(fileName: string, destination: string): Promise<strin
 async function uploadToS3(s3: any, bucket: String, fileName: string, destination: string): Promise<void> {
     console.log(`Now uploading ${fileName} to s3://${bucket}/${destination}`);
 
-    await s3.putObject({
+    return s3.putObject({
         Body: fs.createReadStream(fileName),
         Bucket: bucket,
         Key: destination
@@ -186,18 +186,15 @@ async function streamLocalToFtp(path: string, dst: string, ftpClient): Promise<s
  * Sends a metric datum to CloudWatch
  */
 async function sendToCloudwatch(metricName: String, value: number, unit: string): Promise<void> {
-    return new Promise(resolve => {
-        cloudwatch.putMetricData({
-            MetricData: [{
-                MetricName: metricName,
-                Value: value,
-                Unit: unit
-            }],
-            Namespace: 'AWS/Lambda'
-        }, function(err) {
-            if (err) console.error(`Could not send metric data to CloudWatch: ${err}`)
-            resolve();
-        })
+    return cloudwatch.putMetricData({
+        MetricData: [{
+            MetricName: metricName,
+            Value: value,
+            Unit: unit
+        }],
+        Namespace: 'AWS/Lambda'
+    }).promise().catch(err => {
+        console.error(`Could not send metric data to CloudWatch: ${err}`)
     });
 }
 
