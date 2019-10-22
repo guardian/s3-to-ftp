@@ -20,11 +20,11 @@ export async function handler(event) {
                 console.error(`Can't assume role ${config.AthenaRole}`, err)
                 reject(err);
             } else {
-                AWS.config.update({
-                    accessKeyId: data.Credentials.AccessKeyId,
-                    secretAccessKey: data.Credentials.SecretAccessKey,
-                    sessionToken: data.Credentials.SessionToken
-                });
+                AWS.config.credentials = new AWS.Credentials(
+                    data.Credentials.AccessKeyId,
+                    data.Credentials.SecretAccessKey,
+                    data.Credentials.SessionToken
+                );
                 resolve(event);
             }
         });
@@ -68,7 +68,6 @@ export async function run(event) {
  * Streams the given s3 object to a local zip archive.
  */
 async function streamS3ToLocalZip(s3: any, bucket: string, key: string, dst: string): Promise<string> {
-    console.log('Starting S3 getObject request');
     const result = await s3.getObject({
         Bucket: bucket,
         Key: key
@@ -77,7 +76,7 @@ async function streamS3ToLocalZip(s3: any, bucket: string, key: string, dst: str
     const fileSizeInMB = result.ContentLength/1024/1024;
     console.log(`Received ${bucket}/${key} (${fileSizeInMB.toFixed(2)}MB, ${result.ContentType})`);
     
-    await sendToCloudwatch('SizeOfCSV', fileSizeInMB, 'Megabytes')
+    await sendToCloudwatch('SizeOfCSV', fileSizeInMB, 'Megabytes');
     
     return new Promise((resolve, reject) => {
         const stream = result.Body;    
