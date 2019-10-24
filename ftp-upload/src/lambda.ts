@@ -20,20 +20,18 @@ export async function handler(event) {
                 console.error(`Can't assume role ${config.AthenaRole}`, err)
                 reject(err);
             } else {
-                AWS.config.credentials = new AWS.Credentials(
-                    data.Credentials.AccessKeyId,
-                    data.Credentials.SecretAccessKey,
-                    data.Credentials.SessionToken
-                );
-                resolve(event);
+                resolve(new AWS.S3({
+                    region: 'eu-west-1',
+                    accessKeyId: data.Credentials.AccessKeyId,
+                    secretAccessKey: data.Credentials.SecretAccessKey,
+                    sessionToken: data.Credentials.SessionToken
+                }));
             }
         });
-    }).then(run);
+    }).then(s3 => run(s3, event));
 }
 
-export async function run(event) {
-    const s3 = new AWS.S3();
-
+export async function run(s3, event) {
     return Promise.all(event.Records
         .filter(record => record.s3.object.key.endsWith('csv'))
         .slice(0, 1)
