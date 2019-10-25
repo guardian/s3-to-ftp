@@ -65,6 +65,12 @@ Resources:
               Effect: Allow
               Action: sts:AssumeRole
               Resource: !Ref AthenaRole
+        - PolicyName: send-to-cloudwatch
+          PolicyDocument:
+            Statement:
+              Effect: Allow
+              Action: cloudwatch:PutMetricData
+              Resource: "*"
   Lambda:
       Type: AWS::Serverless::Function
       Properties:
