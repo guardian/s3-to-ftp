@@ -1,13 +1,13 @@
 import {Config} from './config';
 
-const AWS = require('aws-sdk');
-const FtpClient = require('@icetee/ftp');
-const fs = require('fs');
-const archiver = require('archiver');
+import * as AWS from "aws-sdk";
+import * as FtpClient from "@icetee/ftp";
+import * as fs from "fs";
+import * as archiver from "archiver";
 
 const config = new Config();
-const cloudwatch = new AWS.CloudWatch({ apiVersion: '2010-08-01', region: 'eu-west-1' });
-const sts = new AWS.STS({ apiVersion: '2011-06-15' });
+const cloudwatch: AWS.CloudWatch = new AWS.CloudWatch({ apiVersion: '2010-08-01', region: 'eu-west-1' });
+const sts: AWS.STS = new AWS.STS({ apiVersion: '2011-06-15' });
 
 export async function handler(event) {
     return new Promise((resolve, reject) => {
@@ -28,10 +28,10 @@ export async function handler(event) {
                 }));
             }
         });
-    }).then(s3 => run(s3, event));
+    }).then((s3: AWS.S3) => run(s3, event));
 }
 
-export async function run(s3, event) {
+export async function run(s3: AWS.S3, event) {
     return Promise.all(event.Records
         .filter(record => record.s3.object.key.endsWith('csv'))
         .slice(0, 1)
@@ -65,11 +65,11 @@ export async function run(s3, event) {
 /**
  * Streams the given s3 object to a local zip archive.
  */
-async function streamS3ToLocalZip(s3: any, bucket: string, key: string, dst: string): Promise<string> {
+async function streamS3ToLocalZip(s3: AWS.S3, bucket: string, key: string, dst: string): Promise<string> {
     const result = await s3.getObject({
         Bucket: bucket,
         Key: key
-    }).promise().catch(err => console.log(`Cannot get the CSV from S3: ${err}`));
+    }).promise();
 
     const fileSizeInMB = result.ContentLength/1024/1024;
     console.log(`Received ${bucket}/${key} (${fileSizeInMB.toFixed(2)}MB, ${result.ContentType})`);
@@ -116,7 +116,7 @@ async function uploadToNLA(fileName: string, destination: string): Promise<strin
         .then(ftpClient => streamLocalToFtp(fileName, destination, ftpClient));
 }
 
-async function uploadToS3(s3: any, bucket: String, fileName: string, destination: string): Promise<void> {
+async function uploadToS3(s3: AWS.S3, bucket: string, fileName: string, destination: string): Promise<AWS.S3.PutObjectOutput> {
     console.log(`Now uploading ${fileName} to s3://${bucket}/${destination}`);
 
     return s3.putObject({
@@ -156,7 +156,7 @@ async function ftpConnect(host: string, user: string, password: string): Promise
 /**
  * Streams the given local file to the given ftp session.
  */
-async function streamLocalToFtp(path: string, dst: string, ftpClient): Promise<string> {
+async function streamLocalToFtp(path: string, dst: string, ftpClient: FtpClient): Promise<string> {
     return new Promise((resolve, reject) => {
         console.log(`Now uploading ${path} to ${dst}`);
 
@@ -182,7 +182,7 @@ async function streamLocalToFtp(path: string, dst: string, ftpClient): Promise<s
 /**
  * Sends a metric datum to CloudWatch
  */
-async function sendToCloudwatch(metricName: String, value: number, unit: string): Promise<void> {
+async function sendToCloudwatch(metricName: string, value: number, unit: string): Promise<void> {
     return cloudwatch.putMetricData({
         MetricData: [{
             MetricName: metricName,
@@ -190,7 +190,7 @@ async function sendToCloudwatch(metricName: String, value: number, unit: string)
             Unit: unit
         }],
         Namespace: 'AWS/Lambda'
-    }).promise().catch(err => {
+    }).promise().then(() => {}, err => {
         console.error(`Could not send metric data to CloudWatch: ${err}`)
     });
 }
